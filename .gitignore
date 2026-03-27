@@ -1,0 +1,12 @@
+# системные файлы macos и windows
+.DS_Store
+Thumbs.db
+
+# файлы редакторов кода
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
