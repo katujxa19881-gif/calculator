@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --c-bg-gradient: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+    --c-surface: #ffffff;
+    --c-text-main: #1e293b;
+    --c-text-muted: #64748b;
+    --c-primary: #4f46e5;
+    --c-primary-hover: #4338ca;
+    --c-accent: #0ea5e9;
+    --c-danger: #ef4444;
+    --c-danger-hover: #dc2829;
+    --c-success: #10b981;
+    --c-border: #cbd5e1;
+    --c-border-light: #e2e8f0;
+    --c-btn-text: #ffffff;
+    --radius-lg: 16px;
+    --radius-md: 8px;
+    --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+  }
+
+  .app-wrap {
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: var(--c-text-main);
+    background: var(--c-bg-gradient);
+    padding: 30px 20px;
+    border-radius: var(--radius-lg);
+    max-width: 1200px;
+    margin: 0 auto;
+    box-sizing: border-box;
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.5);
+  }
+
+  .app-wrap * {
+    box-sizing: border-box;
+  }
+
+  .app-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  @media (min-width: 860px) {
+    .app-grid {
+      grid-template-columns: 1.5fr 1fr;
+    }
+  }
+
+  .card {
+    background: var(--c-surface);
+    padding: 24px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    margin-bottom: 24px;
+    border: 1px solid rgba(255,255,255,0.8);
+  }
+
+  .app-wrap h2 {
+    margin-top: 0;
+    margin-bottom: 24px;
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--c-text-main);
+  }
+
+  .app-wrap h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--c-text-main);
+    border-bottom: 2px solid var(--c-border-light);
+    padding-bottom: 10px;
+    text-transform: lowercase;
+  }
+
+  .field-group {
+    margin-bottom: 16px;
+  }
+
+  .field-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--c-text-muted);
+    text-transform: lowercase;
+  }
+
+  .input-text {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    color: var(--c-text-main);
+    background-color: #f8fafc;
+    transition: all 0.2s ease;
+  }
+
+  .input-text:focus {
+    outline: none;
+    border-color: var(--c-primary);
+    background-color: var(--c-surface);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+
+  .input-target {
+    border-color: var(--c-accent);
+    background-color: rgba(14, 165, 233, 0.02);
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .mat-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px dashed var(--c-border-light);
+  }
+
+  @media (max-width: 640px) {
+    .mat-row {
+      grid-template-columns: 1fr 1fr;
+    }
+    .mat-row .m-name { grid-column: span 2; }
+    .mat-row .m-del { grid-column: span 2; }
+  }
+
+  .btn {
+    background-color: var(--c-primary);
+    color: var(--c-btn-text) !important;
+    border: none;
+    padding: 12px 20px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .btn:hover {
+    background-color: var(--c-primary-hover);
+    transform: translateY(-1px);
+  }
+
+  .btn-danger {
+    background-color: var(--c-surface);
+    color: var(--c-danger) !important;
+    border: 1px solid var(--c-border);
+    padding: 12px;
+  }
+
+  .btn-danger:hover {
+    background-color: var(--c-danger);
+    color: var(--c-btn-text) !important;
+    border-color: var(--c-danger);
+  }
+
+  .btn-outline {
+    background-color: transparent;
+    color: var(--c-primary) !important;
+    border: 2px dashed var(--c-primary);
+  }
+
+  .btn-outline:hover {
+    background-color: rgba(79, 70, 229, 0.05);
+    color: var(--c-primary-hover) !important;
+  }
+
+  .slider-box {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .slider-box input[type="range"] {
+    flex-grow: 1;
+    accent-color: var(--c-primary);
+  }
+
+  .slider-box input[type="number"] {
+    width: 90px;
+  }
+
+  .dash-panel {
+    position: sticky;
+    top: 20px;
+  }
+
+  .d-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+  }
+
+  .d-row span:first-child {
+    color: var(--c-text-muted);
+    text-transform: lowercase;
+  }
+
+  .d-val {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .u-val {
+    font-size: 0.85em;
+    color: var(--c-text-muted);
+    font-weight: 400;
+    margin-left: 6px;
+    white-space: nowrap;
+  }
+
+  .d-divider {
+    height: 1px;
+    background: var(--c-border-light);
+    margin: 16px 0;
+  }
+
+  .d-total {
+    font-size: 1.1rem;
+    margin-top: 16px;
+  }
+  
+  .d-highlight {
+    background: #f8fafc;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    margin-top: 20px;
+    border: 1px solid var(--c-accent);
+  }
+
+  .d-highlight .d-row:last-child {
+    margin-bottom: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--c-primary);
+  }
+
+  .text-danger {
+    color: var(--c-danger) !important;
+  }
+  
+  .text-success {
+    color: var(--c-success) !important;
+  }
+
+  .discount-block {
+    background: rgba(14, 165, 233, 0.05);
+    padding: 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(14, 165, 233, 0.2);
+    margin-top: 20px;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="app-wrap" id="costCalculator">
+  <h2>Калькулятор экономики проекта</h2>
+  
+  <div class="app-grid">
+    <div class="col-left">
+      
+      <div class="card">
+        <h3>константы и параметры</h3>
+        <div class="grid-2">
+          <div class="field-group">
+            <label>стоимость прямых затрат (₽/сек)</label>
+            <input type="number" id="v_costDirect" class="input-text trig" min="0" step="0.01" value="1.50">
+          </div>
+          <div class="field-group">
+            <label>стоимость накладных затрат (₽/сек)</label>
+            <input type="number" id="v_costOverhead" class="input-text trig" min="0" step="0.01" value="1.00">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field-group">
+            <label>базовая рентабельность (%)</label>
+            <input type="number" id="v_profitMargin" class="input-text trig" min="0" max="100" value="30">
+          </div>
+          <div class="field-group">
+            <label style="color: var(--c-accent); font-weight: 600;">целевая цена (таргет) за 1 шт (₽)</label>
+            <input type="number" id="v_targetPrice" class="input-text input-target trig" min="0" placeholder="если 0, расчет по %">
+          </div>
+        </div>
+        <div class="field-group">
+          <label>ставка ндс</label>
+          <select id="v_vat" class="input-text trig">
+            <option value="22" selected>22%</option>
+            <option value="0">без ндс</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>заказ и производство</h3>
+        <div class="field-group">
+          <label>наименование изделия</label>
+          <input type="text" class="input-text" placeholder="например: плата управления...">
+        </div>
+        <div class="grid-2">
+          <div class="field-group">
+            <label>объем выпуска (шт)</label>
+            <input type="number" id="v_qty" class="input-text trig" min="1" value="1000">
+          </div>
+          <div class="field-group">
+            <label>труд на 1 шт (сек)</label>
+            <input type="number" id="v_laborUnit" class="input-text trig" min="0" value="180">
+          </div>
+        </div>
+        <div class="field-group">
+          <label>транспортные расходы на всю партию (₽)</label>
+          <input type="number" id="v_transportBatch" class="input-text trig" min="0" step="100" value="5000">
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>материалы (расход на 1 шт)</h3>
+        <div id="matList">
+          <!-- динамические строки -->
+        </div>
+        <button type="button" id="btnMat" class="btn btn-outline" style="width: 100%">+ добавить материал</button>
+        <button type="button" id="btnReset" class="btn btn-outline" style="width: 100%; margin-top: 12px; border-color: var(--c-border); color: var(--c-text-muted) !important;">сбросить сохраненные данные</button>
+      </div>
+
+    </div>
+
+    <div class="col-right">
+      <div class="card dash-panel">
+        
+        <h3>себестоимость</h3>
+        <div class="d-row">
+          <span>материалы:</span>
+          <div class="d-val">
+            <span id="out_matBatch">0 ₽</span>
+            <span id="out_matUnit" class="u-val">(0 ₽/шт)</span>
+          </div>
+        </div>
+        <div class="d-row">
+          <span>фот прямой:</span>
+          <div class="d-val">
+            <span id="out_laborDirectBatch">0 ₽</span>
+            <span id="out_laborDirectUnit" class="u-val">(0 ₽/шт)</span>
+          </div>
+        </div>
+        <div class="d-row">
+          <span>доставка:</span>
+          <div class="d-val">
+            <span id="out_transBatch">0 ₽</span>
+            <span id="out_transUnit" class="u-val">(0 ₽/шт)</span>
+          </div>
+        </div>
+        <div class="d-row" style="margin-top: 8px; font-weight: 500;">
+          <span style="color: var(--c-text-main);">итого прямые расходы:</span>
+          <div class="d-val">
+            <span id="out_directCostBatch">0 ₽</span>
+            <span id="out_directCostUnit" class="u-val">(0 ₽/шт)</span>
+          </div>
+        </div>
+        <div class="d-divider"></div>
+        <div class="d-row">
+          <span>накладные расходы:</span>
+          <div class="d-val">
+            <span id="out_laborOverheadBatch">0 ₽</span>
+            <span id="out_laborOverheadUnit" class="u-val">(0 ₽/шт)</span>
+          </div>
+        </div>
+        <div class="d-row d-total">
+          <span>полная себестоимость:</span>
+          <div class="d-val">
+            <span id="out_fullCostBatch">0 ₽</span>
+            <span id="out_fullCostUnit" class="u-val" style="font-weight: 400;">(0 ₽/шт)</span>
+          </div>
+        </div>
+
+        <h3 style="margin-top: 30px;">коммерческое предложение</h3>
+        <div class="d-row">
+          <span>базовая цена без ндс:</span>
+          <div class="d-val">
+            <span id="out_basePriceNoVat">0 ₽</span>
+            <span id="out_basePriceNoVatUnit" class="u-val">(0 ₽/шт)</span>
+          </div>
+        </div>
+        <div class="d-row">
+          <span>расчетная прибыль:</span>
+          <div class="d-val">
+            <span id="out_baseProfit">0 ₽</span>
+            <span id="out_baseProfitUnit" class="u-val">(0 ₽/шт)</span>
+          </div>
+        </div>
+
+        <div class="discount-block">
+          <div class="field-group" style="margin-bottom: 12px;">
+            <label style="color: var(--c-primary); font-weight: 600;">предоставить скидку клиенту (%)</label>
+            <div class="slider-box">
+              <input type="range" id="v_discountSlider" class="trig" min="0" max="50" value="0" step="0.5">
+              <input type="number" id="v_discountInput" class="input-text trig" min="0" max="100" value="0" step="0.5">
+            </div>
+          </div>
+          <div class="d-row">
+            <span>сумма скидки:</span>
+            <div class="d-val">
+              <span id="out_discountAmount" class="text-danger">0 ₽</span>
+              <span id="out_discountUnit" class="u-val">(0 ₽/шт)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-highlight">
+          <div class="d-row">
+            <span>финальная прибыль:</span>
+            <div class="d-val">
+              <span id="out_finalProfit">0 ₽</span>
+              <span id="out_finalProfitUnit" class="u-val" style="color: inherit;">(0 ₽/шт)</span>
+            </div>
+          </div>
+          <div class="d-row">
+            <span>маржа проекта:</span>
+            <span id="out_marginPercent" style="font-weight: 700;">0%</span>
+          </div>
+          <div class="d-divider" style="margin: 12px 0; background: var(--c-border);"></div>
+          <div class="d-row">
+            <span>цена для клиента (с ндс):</span>
+            <div class="d-val">
+              <span id="out_finalPriceVat">0 ₽</span>
+              <span id="out_finalPriceVatUnit" class="u-val" style="font-weight: 400; color: inherit;">(0 ₽/шт)</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const calc = document.getElementById('costCalculator');
+  const matList = document.getElementById('matList');
+  
+  const getN = (id) => {
+    const el = document.getElementById(id);
+    if (!el) return 0;
+    const v = parseFloat(el.value);
+    return isNaN(v) ? 0 : v;
+  };
+  
+  const getVal = (el) => {
+    const v = parseFloat(el.value);
+    return isNaN(v) ? 0 : v;
+  };
+
+  const fmt = (num) => {
+    return new Intl.NumberFormat('ru-RU', { 
+      style: 'decimal',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(num) + ' ₽';
+  };
+
+  const fmtPct = (num) => {
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'percent',
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1
+    }).format(num / 100);
+  };
+
+  const addMatRow = (name = '', norm = '1', price = '0') => {
+    const div = document.createElement('div');
+    div.className = 'mat-row';
+    div.innerHTML = `
+      <div class="field-group m-name" style="margin:0">
+        <label>материал</label>
+        <input type="text" class="input-text m-name-val trig" placeholder="название..." value="${name.replace(/"/g, '&quot;')}">
+      </div>
+      <div class="field-group" style="margin:0">
+        <label>расход</label>
+        <input type="number" class="input-text m-norm trig" min="0" step="0.001" value="${norm}">
+      </div>
+      <div class="field-group" style="margin:0">
+        <label>цена за ед.</label>
+        <input type="number" class="input-text m-price trig" min="0" step="0.1" value="${price}">
+      </div>
+      <button type="button" class="btn btn-danger m-del" title="удалить">✕</button>
+    `;
+    matList.appendChild(div);
+  };
+
+  const saveToStorage = () => {
+    const data = {
+      costDirect: document.getElementById('v_costDirect').value,
+      costOverhead: document.getElementById('v_costOverhead').value,
+      profitMargin: document.getElementById('v_profitMargin').value,
+      targetPrice: document.getElementById('v_targetPrice').value,
+      vat: document.getElementById('v_vat').value,
+      productName: document.querySelector('.card:nth-child(2) .input-text').value,
+      qty: document.getElementById('v_qty').value,
+      laborUnit: document.getElementById('v_laborUnit').value,
+      transportBatch: document.getElementById('v_transportBatch').value,
+      discountInput: document.getElementById('v_discountInput').value,
+      materials: []
+    };
+    
+    matList.querySelectorAll('.mat-row').forEach(row => {
+      data.materials.push({
+        name: row.querySelector('.m-name-val').value,
+        norm: row.querySelector('.m-norm').value,
+        price: row.querySelector('.m-price').value
+      });
+    });
+    
+    localStorage.setItem('calc_tilda_data', JSON.stringify(data));
+  };
+
+  const loadFromStorage = () => {
+    const raw = localStorage.getItem('calc_tilda_data');
+    if (!raw) {
+      addMatRow();
+      return;
+    }
+    
+    try {
+      const data = JSON.parse(raw);
+      document.getElementById('v_costDirect').value = data.costDirect || '1.50';
+      document.getElementById('v_costOverhead').value = data.costOverhead || '1.00';
+      document.getElementById('v_profitMargin').value = data.profitMargin || '30';
+      document.getElementById('v_targetPrice').value = data.targetPrice || '';
+      document.getElementById('v_vat').value = data.vat || '22';
+      document.querySelector('.card:nth-child(2) .input-text').value = data.productName || '';
+      document.getElementById('v_qty').value = data.qty || '1000';
+      document.getElementById('v_laborUnit').value = data.laborUnit || '180';
+      document.getElementById('v_transportBatch').value = data.transportBatch || '5000';
+      document.getElementById('v_discountInput').value = data.discountInput || '0';
+      document.getElementById('v_discountSlider').value = data.discountInput || '0';
+
+      if (data.materials && data.materials.length > 0) {
+        data.materials.forEach(m => addMatRow(m.name, m.norm, m.price));
+      } else {
+        addMatRow();
+      }
+    } catch (e) {
+      addMatRow();
+    }
+  };
+
+  document.getElementById('btnReset').addEventListener('click', () => {
+    localStorage.removeItem('calc_tilda_data');
+    document.getElementById('v_costDirect').value = '1.50';
+    document.getElementById('v_costOverhead').value = '1.00';
+    document.getElementById('v_profitMargin').value = '30';
+    document.getElementById('v_targetPrice').value = '';
+    document.getElementById('v_vat').value = '22';
+    document.querySelector('.card:nth-child(2) .input-text').value = '';
+    document.getElementById('v_qty').value = '1000';
+    document.getElementById('v_laborUnit').value = '180';
+    document.getElementById('v_transportBatch').value = '5000';
+    document.getElementById('v_discountInput').value = '0';
+    document.getElementById('v_discountSlider').value = '0';
+    matList.innerHTML = '';
+    addMatRow();
+    calculate();
+  });
+
+  const dSlider = document.getElementById('v_discountSlider');
+  const dInput = document.getElementById('v_discountInput');
+  
+  dSlider.addEventListener('input', (e) => { dInput.value = e.target.value; calculate(); });
+  dInput.addEventListener('input', (e) => { dSlider.value = e.target.value; calculate(); });
+
+  const calculate = () => {
+    const rawQty = getN('v_qty');
+    const qty = Math.max(1, rawQty); // защита от деления на ноль
+    const costDirect = getN('v_costDirect');
+    const costOverhead = getN('v_costOverhead');
+    const targetPriceUnit = getN('v_targetPrice');
+    const laborUnit = getN('v_laborUnit');
+    const transBatch = getN('v_transportBatch');
+    const profitMargin = getN('v_profitMargin') / 100;
+    const vatRate = getN('v_vat') / 100;
+    const discountRate = getN('v_discountInput') / 100;
+
+    let matCostUnit = 0;
+    matList.querySelectorAll('.mat-row').forEach(row => {
+      matCostUnit += getVal(row.querySelector('.m-norm')) * getVal(row.querySelector('.m-price'));
+    });
+
+    // расчет затрат на партию
+    const matBatch = matCostUnit * qty;
+    const laborDirectBatch = (laborUnit * costDirect) * qty;
+    const laborOverheadBatch = (laborUnit * costOverhead) * qty;
+    
+    // группировка прямых и полных затрат
+    const directCostBatch = matBatch + laborDirectBatch + transBatch;
+    const fullCostBatch = directCostBatch + laborOverheadBatch;
+    
+    let basePriceNoVat = 0;
+    let baseProfit = 0;
+
+    // логика таргета за штуку
+    if (targetPriceUnit > 0) {
+      basePriceNoVat = targetPriceUnit * qty;
+      baseProfit = basePriceNoVat - fullCostBatch;
+    } else {
+      baseProfit = fullCostBatch * profitMargin;
+      basePriceNoVat = fullCostBatch + baseProfit;
+    }
+    
+    // расчет скидки и финальных цен
+    const discountAmount = basePriceNoVat * discountRate;
+    const finalPriceNoVat = basePriceNoVat - discountAmount;
+    
+    const finalProfit = finalPriceNoVat - fullCostBatch;
+    const finalPriceVat = finalPriceNoVat * (1 + vatRate);
+
+    // расчет маржи (по прямым затратам)
+    let marginPercent = 0;
+    if (finalPriceNoVat > 0) {
+      marginPercent = ((finalPriceNoVat - directCostBatch) / finalPriceNoVat) * 100;
+    }
+
+    // функция обновления пары (партия + штука)
+    const updatePair = (idBatch, idUnit, valBatch, isNegative = false) => {
+      const elBatch = document.getElementById(idBatch);
+      const elUnit = document.getElementById(idUnit);
+      
+      const prefix = isNegative ? '- ' : '';
+      elBatch.textContent = prefix + fmt(valBatch);
+      elUnit.textContent = '(' + prefix + fmt(valBatch / qty) + '/шт)';
+    };
+
+    // обновление dom
+    updatePair('out_matBatch', 'out_matUnit', matBatch);
+    updatePair('out_laborDirectBatch', 'out_laborDirectUnit', laborDirectBatch);
+    updatePair('out_transBatch', 'out_transUnit', transBatch);
+    updatePair('out_directCostBatch', 'out_directCostUnit', directCostBatch);
+    updatePair('out_laborOverheadBatch', 'out_laborOverheadUnit', laborOverheadBatch);
+    updatePair('out_fullCostBatch', 'out_fullCostUnit', fullCostBatch);
+    
+    updatePair('out_baseProfit', 'out_baseProfitUnit', baseProfit);
+    updatePair('out_basePriceNoVat', 'out_basePriceNoVatUnit', basePriceNoVat);
+    
+    updatePair('out_discountAmount', 'out_discountUnit', discountAmount, true);
+    updatePair('out_finalProfit', 'out_finalProfitUnit', finalProfit);
+    updatePair('out_finalPriceVat', 'out_finalPriceVatUnit', finalPriceVat);
+    
+    // стилизация прибыли
+    const elFinalProfit = document.getElementById('out_finalProfit').parentElement;
+    if (finalProfit < 0) {
+      elFinalProfit.classList.add('text-danger');
+      elFinalProfit.classList.remove('text-success');
+    } else {
+      elFinalProfit.classList.remove('text-danger');
+      elFinalProfit.classList.add('text-success');
+    }
+
+    // стилизация маржи
+    const elMargin = document.getElementById('out_marginPercent');
+    elMargin.textContent = fmtPct(marginPercent);
+    if (marginPercent < 0) {
+      elMargin.classList.add('text-danger');
+      elMargin.classList.remove('text-success');
+    } else {
+      elMargin.classList.remove('text-danger');
+      elMargin.classList.add('text-success');
+    }
+    
+    saveToStorage();
+  };
+
+  document.getElementById('btnMat').addEventListener('click', () => {
+    addMatRow();
+    calculate();
+  });
+
+  matList.addEventListener('click', (e) => {
+    if (e.target.classList.contains('m-del')) {
+      e.target.closest('.mat-row').remove();
+      calculate();
+    }
+  });
+
+  calc.addEventListener('input', (e) => {
+    if (e.target.classList.contains('trig') || e.target.classList.contains('m-name-val')) {
+      calculate();
+    } else if (e.target.tagName.toLowerCase() === 'input' && e.target.type === 'text') {
+      saveToStorage();
+    }
+  });
+
+  loadFromStorage();
+  calculate();
+});
+</script>
+</body>
+</html>
