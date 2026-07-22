@@ -346,6 +346,10 @@
     Не введён <b>код тарифов</b> — расчёт стоимости невозможен. Нажмите «тарифы» вверху справа и вставьте код, который выдаёт финансовый отдел.
   </div>
 
+  <div id="alertStale" class="alert alert-warn">
+    Тарифам больше полугода (<span id="staleDate"></span>) — расчёт может не соответствовать текущим ставкам. Запросите актуальный код в финансовом отделе.
+  </div>
+
   <div class="app-grid">
     <div class="col-left">
 
@@ -594,10 +598,17 @@
           <div class="field-group"><label>коэффициент охр и кр</label><input type="number" id="r_ohr" class="input-text" step="0.000001"></div>
           <div class="field-group"><label>коэффициент % по кредиту</label><input type="number" id="r_credit" class="input-text" step="0.000001"></div>
           <div class="field-group"><label>метка версии</label><input type="text" id="r_label" class="input-text" placeholder="2026"></div>
+          <div class="field-group"><label>дата тарифов</label><input type="date" id="r_date" class="input-text"></div>
+          <div class="field-group"><label>адрес калькулятора</label><input type="text" id="r_url" class="input-text" placeholder="https://..."></div>
         </div>
-        <button type="button" id="btnKeyGen" class="btn" style="width:100%">сгенерировать код</button>
-        <div class="field-group" style="margin-top:16px; margin-bottom:0">
-          <label>код для рассылки</label>
+        <button type="button" id="btnKeyGen" class="btn" style="width:100%">сгенерировать код и ссылку</button>
+        <div class="field-group" style="margin-top:16px">
+          <label>ссылка для рассылки — тарифы применятся автоматически</label>
+          <textarea id="linkOutput" class="key-box" readonly></textarea>
+          <button type="button" id="btnCopyLink" class="btn-quiet" style="margin-top:8px">скопировать ссылку</button>
+        </div>
+        <div class="field-group" style="margin-bottom:0">
+          <label>код тарифов — если ссылку прислать нельзя</label>
           <textarea id="keyOutput" class="key-box" readonly></textarea>
         </div>
       </div>
@@ -610,17 +621,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const app = document.getElementById('costCalculator');
   const $ = (id) => document.getElementById(id);
 
-  // ставки по умолчанию — лист «Константы_и_ставки», редакция 2026
+  // пустая заготовка ставок: реальные значения приходят только кодом тарифов
   const DEFAULT_RATES = {
-    fotRab: 0.12345065691776524,
-    fotTeh: 0.2230002900370329,
-    amort:  0.05871363057270686,
-    other:  0.0384671078472861,
-    opr:    0.31243452409230843,
-    ohr:    0.41477479676928597,
-    credit: 0,
-    label:  '2026'
+    fotRab: 0, fotTeh: 0, amort: 0, other: 0,
+    opr: 0, ohr: 0, credit: 0, label: '', date: ''
   };
+  // срок годности тарифов, дней
+  const RATES_MAX_AGE = 183;
   // sha-256 пароля служебного режима (по умолчанию: цтс-2026)
   const MASTER_HASH = '91ea4e668a3f32fece593d08de0cf9334418fcc8913d2b530da70d9d40e8bd46';
 
@@ -662,35 +669,53 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const packRates = (r) => {
-    const arr = [r.fotRab, r.fotTeh, r.amort, r.other, r.opr, r.ohr, r.credit, r.label];
+    const arr = [r.fotRab, r.fotTeh, r.amort, r.other, r.opr, r.ohr, r.credit, r.label, r.date || ''];
     const body = btoa(unescape(encodeURIComponent(JSON.stringify(arr))));
     return 'CTS1-' + body + '-' + crc(body);
   };
 
   const unpackRates = (key) => {
-    const parts = String(key).trim().split('-');
+    const raw = String(key).trim();
+    const parts = raw.slice(raw.indexOf('CTS1-')).split('-');
     if (parts.length !== 3 || parts[0] !== 'CTS1') throw new Error('неверный формат кода');
     if (crc(parts[1]) !== parts[2].toUpperCase()) throw new Error('код повреждён при копировании');
     const a = JSON.parse(decodeURIComponent(escape(atob(parts[1]))));
     if (!Array.isArray(a) || a.length < 7) throw new Error('код неполный');
     return {
       fotRab: +a[0], fotTeh: +a[1], amort: +a[2], other: +a[3],
-      opr: +a[4], ohr: +a[5], credit: +a[6], label: a[7] || ''
+      opr: +a[4], ohr: +a[5], credit: +a[6], label: a[7] || '', date: a[8] || ''
     };
+  };
+
+  const ruDate = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return isNaN(d) ? '' : d.toLocaleDateString('ru-RU');
+  };
+
+  const ageDays = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    return isNaN(d) ? null : Math.floor((Date.now() - d.getTime()) / 86400000);
   };
 
   const setRates = (r) => {
     rates = r;
     const chip = $('btnRates');
-    if (r) {
-      chip.className = 'rates-chip ok no-print';
-      chip.textContent = 'тарифы ' + (r.label || 'загружены');
-      $('alertRates').classList.remove('show');
-    } else {
+    if (!r) {
       chip.className = 'rates-chip bad no-print';
       chip.textContent = 'тарифы не заданы';
       $('alertRates').classList.add('show');
+      $('alertStale').classList.remove('show');
+      return;
     }
+    const age = ageDays(r.date);
+    const stale = age !== null && age > RATES_MAX_AGE;
+    chip.className = 'rates-chip ' + (stale ? 'bad' : 'ok') + ' no-print';
+    chip.textContent = 'тарифы ' + (r.label || 'загружены') + (r.date ? ' · от ' + ruDate(r.date) : '');
+    $('alertRates').classList.remove('show');
+    $('staleDate').textContent = ruDate(r.date);
+    $('alertStale').classList.toggle('show', stale);
   };
 
   // ── строки таблиц ────────────────────────────────────────
@@ -1109,6 +1134,9 @@ document.addEventListener('DOMContentLoaded', () => {
     $('r_amort').value = r.amort;   $('r_other').value = r.other;
     $('r_opr').value = r.opr;       $('r_ohr').value = r.ohr;
     $('r_credit').value = r.credit; $('r_label').value = r.label || '';
+    $('r_date').value = new Date().toISOString().slice(0, 10);
+    $('r_url').value = location.origin === 'null'
+      ? '' : location.origin + location.pathname;
   };
 
   $('btnPwdOk').addEventListener('click', async () => {
@@ -1128,22 +1156,47 @@ document.addEventListener('DOMContentLoaded', () => {
     const r = {
       fotRab: getN('r_fotRab'), fotTeh: getN('r_fotTeh'), amort: getN('r_amort'),
       other: getN('r_other'), opr: getN('r_opr'), ohr: getN('r_ohr'),
-      credit: getN('r_credit'), label: $('r_label').value.trim()
+      credit: getN('r_credit'), label: $('r_label').value.trim(),
+      date: $('r_date').value
     };
     const key = packRates(r);
+    const base = $('r_url').value.trim();
     $('keyOutput').value = key;
-    $('keyOutput').select();
+    $('linkOutput').value = base ? base + '#' + key : '';
     localStorage.setItem(STORE_RATES, key);
     setRates(r);
     calculate();
   });
 
+  $('btnCopyLink').addEventListener('click', () => {
+    const box = $('linkOutput');
+    if (!box.value) return;
+    box.select();
+    navigator.clipboard.writeText(box.value).catch(() => document.execCommand('copy'));
+    $('btnCopyLink').textContent = 'скопировано';
+    setTimeout(() => { $('btnCopyLink').textContent = 'скопировать ссылку'; }, 1500);
+  });
+
   // ── старт ────────────────────────────────────────────────
-  const savedKey = localStorage.getItem(STORE_RATES);
-  if (savedKey) {
-    try { setRates(unpackRates(savedKey)); } catch (e) { setRates(null); }
-  } else {
-    setRates(null);
+  // ключ из ссылки имеет приоритет над сохранённым
+  const hashKey = decodeURIComponent(location.hash.replace(/^#/, '')).trim();
+  let started = false;
+  if (hashKey.indexOf('CTS1-') === 0) {
+    try {
+      const r = unpackRates(hashKey);
+      localStorage.setItem(STORE_RATES, hashKey);
+      setRates(r);
+      started = true;
+      history.replaceState(null, '', location.pathname + location.search);
+    } catch (e) { /* битая ссылка — падаем на сохранённый код */ }
+  }
+  if (!started) {
+    const savedKey = localStorage.getItem(STORE_RATES);
+    if (savedKey) {
+      try { setRates(unpackRates(savedKey)); } catch (e) { setRates(null); }
+    } else {
+      setRates(null);
+    }
   }
 
   loadData();
