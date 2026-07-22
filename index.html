@@ -127,7 +127,7 @@
     border-bottom: 1px dashed var(--c-border-light);
   }
   .prep-row { grid-template-columns: 2fr 1.3fr 1fr 0.8fr 1.2fr auto; }
-  .tool-row { grid-template-columns: 2.4fr 1.2fr 1.3fr auto; }
+  .tool-row { grid-template-columns: 2fr 1.1fr 1.2fr 1.3fr auto; }
   .stage-row { grid-template-columns: 2.4fr 1.2fr auto; }
   .mat-row  { grid-template-columns: 2fr 1fr 1fr auto; }
   @media (max-width: 760px) {
@@ -252,16 +252,23 @@
   }
   .d-highlight .d-row:last-child { margin-bottom: 0; font-size: 1.2rem; font-weight: 700; color: var(--c-primary); }
 
-  .discount-block {
+  .offer-block {
     background: rgba(14,165,233,0.05);
     padding: 16px;
     border-radius: var(--radius-md);
     border: 1px solid rgba(14,165,233,0.2);
-    margin-top: 20px;
+    margin-bottom: 16px;
   }
-  .slider-box { display: flex; align-items: center; gap: 16px; }
-  .slider-box input[type="range"] { flex-grow: 1; accent-color: var(--c-primary); }
-  .slider-box input[type="number"] { width: 92px; }
+  .offer-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--c-primary);
+    margin-bottom: 14px;
+  }
+  .offer-block .grid-3 { gap: 8px; }
+  .offer-block .field-group { margin-bottom: 12px; }
+  .offer-block .field-group label { font-size: 0.75rem; margin-bottom: 4px; }
+  .offer-block .input-text { padding: 8px; font-size: 0.9rem; }
 
   .text-danger { color: var(--c-danger) !important; }
   .text-success { color: var(--c-success) !important; }
@@ -365,16 +372,8 @@
             <input type="number" id="v_qty" class="input-text trig" min="1" value="1000">
           </div>
         </div>
-        <div class="grid-3">
-          <div class="field-group">
-            <label>наценка на себестоимость (%)</label>
-            <input type="number" id="v_profitMargin" class="input-text trig" min="0" max="300" value="30">
-          </div>
-          <div class="field-group">
-            <label style="color: var(--c-accent); font-weight: 600;">целевая цена за 1 шт (₽)</label>
-            <input type="number" id="v_targetPrice" class="input-text input-target trig" min="0" placeholder="если пусто — по наценке">
-          </div>
-          <div class="field-group">
+        <div class="grid-2">
+          <div class="field-group" style="margin-bottom:0">
             <label>ставка ндс</label>
             <select id="v_vat" class="input-text trig">
               <option value="22" selected>22%</option>
@@ -382,10 +381,10 @@
               <option value="0">без ндс</option>
             </select>
           </div>
-        </div>
-        <div class="field-group" style="margin-bottom:0">
-          <label>логистика на весь заказ (₽)</label>
-          <input type="number" id="v_transportBatch" class="input-text trig" min="0" step="100" value="0">
+          <div class="field-group" style="margin-bottom:0">
+            <label>логистика на весь заказ (₽) — относится на серию</label>
+            <input type="number" id="v_transportBatch" class="input-text trig" min="0" step="100" value="0">
+          </div>
         </div>
       </div>
 
@@ -402,7 +401,7 @@
       <div class="card">
         <div class="card-head">
           <h3>оснастка
-            <span class="hint-note">покупная оснастка: указывается только её стоимость, производственные коэффициенты на неё не начисляются</span>
+            <span class="hint-note">указывается только стоимость, производственные коэффициенты не начисляются; каждую позицию можно отнести на подготовку или на серию</span>
           </h3>
           <button type="button" id="btnTool" class="btn-quiet no-print">+ строка</button>
         </div>
@@ -455,36 +454,34 @@
           Цена ниже себестоимости — проект убыточный.
         </div>
 
-        <div class="d-group open" id="grpOnce">
-          <div class="d-row" data-toggle="grpOnce" style="cursor:pointer">
-            <span><span class="caret">▼</span>разовые затраты по заказу</span>
+        <h3 style="margin-bottom:16px">себестоимость</h3>
+
+        <div class="d-group open" id="grpPrep">
+          <div class="d-row" data-toggle="grpPrep" style="cursor:pointer">
+            <span><span class="caret">▼</span>подготовка производства</span>
             <div class="d-val">
-              <span id="out_onceBatch">0 ₽</span>
-              <span id="out_onceUnit" class="u-val">(0 ₽/шт)</span>
+              <span id="out_costPrepBatch">0 ₽</span>
+              <span id="out_costPrepUnit" class="u-val">(0 ₽/шт)</span>
             </div>
           </div>
           <div class="d-body">
             <div class="d-row d-sub">
-              <span>подготовка производства</span>
+              <span>работы и материалы подготовки</span>
               <div class="d-val"><span id="out_prepBatch">0 ₽</span><span id="out_prepUnit" class="u-val">(0 ₽/шт)</span></div>
             </div>
-            <div class="d-row d-sub">
-              <span>оснастка</span>
-              <div class="d-val"><span id="out_toolBatch">0 ₽</span><span id="out_toolUnit" class="u-val">(0 ₽/шт)</span></div>
-            </div>
             <div class="d-row d-sub" style="margin-bottom:0">
-              <span>логистика</span>
-              <div class="d-val"><span id="out_logBatch">0 ₽</span><span id="out_logUnit" class="u-val">(0 ₽/шт)</span></div>
+              <span>оснастка на подготовку</span>
+              <div class="d-val"><span id="out_toolPrepBatch">0 ₽</span><span id="out_toolPrepUnit" class="u-val">(0 ₽/шт)</span></div>
             </div>
           </div>
         </div>
 
         <div class="d-group open" id="grpSerial">
           <div class="d-row" data-toggle="grpSerial" style="cursor:pointer">
-            <span><span class="caret">▼</span>серийные затраты</span>
+            <span><span class="caret">▼</span>серийный выпуск</span>
             <div class="d-val">
-              <span id="out_serialBatch">0 ₽</span>
-              <span id="out_serialUnit" class="u-val">(0 ₽/шт)</span>
+              <span id="out_costSerBatch">0 ₽</span>
+              <span id="out_costSerUnit" class="u-val">(0 ₽/шт)</span>
             </div>
           </div>
           <div class="d-body">
@@ -492,9 +489,17 @@
               <span>материалы</span>
               <div class="d-val"><span id="out_matBatch">0 ₽</span><span id="out_matUnit" class="u-val">(0 ₽/шт)</span></div>
             </div>
-            <div class="d-row d-sub" style="margin-bottom:0">
+            <div class="d-row d-sub">
               <span>выпуск изделий</span>
               <div class="d-val"><span id="out_mfgBatch">0 ₽</span><span id="out_mfgUnit" class="u-val">(0 ₽/шт)</span></div>
+            </div>
+            <div class="d-row d-sub">
+              <span>логистика</span>
+              <div class="d-val"><span id="out_logBatch">0 ₽</span><span id="out_logUnit" class="u-val">(0 ₽/шт)</span></div>
+            </div>
+            <div class="d-row d-sub" style="margin-bottom:0">
+              <span>оснастка на серию</span>
+              <div class="d-val"><span id="out_toolSerBatch">0 ₽</span><span id="out_toolSerUnit" class="u-val">(0 ₽/шт)</span></div>
             </div>
           </div>
         </div>
@@ -510,26 +515,67 @@
         <div class="d-divider"></div>
 
         <h3 style="margin-bottom:16px">коммерческое предложение</h3>
-        <div class="d-row">
-          <span>базовая цена без ндс:</span>
-          <div class="d-val"><span id="out_basePriceNoVat">0 ₽</span><span id="out_basePriceNoVatUnit" class="u-val">(0 ₽/шт)</span></div>
-        </div>
-        <div class="d-row">
-          <span>расчётная прибыль:</span>
-          <div class="d-val"><span id="out_baseProfit">0 ₽</span><span id="out_baseProfitUnit" class="u-val">(0 ₽/шт)</span></div>
-        </div>
 
-        <div class="discount-block">
-          <div class="field-group" style="margin-bottom:12px">
-            <label style="color: var(--c-primary); font-weight:600">скидка заказчику (%)</label>
-            <div class="slider-box">
-              <input type="range" id="v_discountSlider" class="no-print" min="0" max="50" value="0" step="0.5">
-              <input type="number" id="v_discountInput" class="input-text" min="0" max="100" value="0" step="0.5">
+        <div class="offer-block">
+          <div class="offer-title">подготовка производства</div>
+          <div class="grid-3">
+            <div class="field-group">
+              <label>наценка (%)</label>
+              <input type="number" id="v_markupPrep" class="input-text trig" min="0" max="300" value="30">
+            </div>
+            <div class="field-group">
+              <label style="color: var(--c-accent)">цена за заказ (₽)</label>
+              <input type="number" id="v_targetPrep" class="input-text input-target trig" min="0" placeholder="по наценке">
+            </div>
+            <div class="field-group">
+              <label>скидка (%)</label>
+              <input type="number" id="v_discPrep" class="input-text trig" min="0" max="100" value="0" step="0.5">
             </div>
           </div>
-          <div class="d-row" style="margin-bottom:0">
-            <span>сумма скидки:</span>
-            <div class="d-val"><span id="out_discountAmount" class="text-danger">0 ₽</span><span id="out_discountUnit" class="u-val">(0 ₽/шт)</span></div>
+          <div class="d-row">
+            <span>цена без ндс:</span>
+            <div class="d-val"><span id="out_pricePrep">0 ₽</span><span id="out_pricePrepUnit" class="u-val">(0 ₽/шт)</span></div>
+          </div>
+          <div class="d-row">
+            <span>прибыль:</span>
+            <div class="d-val"><span id="out_profitPrep">0 ₽</span><span id="out_profitPrepUnit" class="u-val">(0 ₽/шт)</span></div>
+          </div>
+          <div class="d-row" style="margin-bottom:0; font-weight:600">
+            <span style="color: var(--c-text-main)">цена с ндс:</span>
+            <div class="d-val"><span id="out_priceVatPrep">0 ₽</span></div>
+          </div>
+        </div>
+
+        <div class="offer-block">
+          <div class="offer-title">серийный выпуск</div>
+          <div class="grid-3">
+            <div class="field-group">
+              <label>наценка (%)</label>
+              <input type="number" id="v_markupSer" class="input-text trig" min="0" max="300" value="30">
+            </div>
+            <div class="field-group">
+              <label style="color: var(--c-accent)">цена за 1 шт (₽)</label>
+              <input type="number" id="v_targetSer" class="input-text input-target trig" min="0" placeholder="по наценке">
+            </div>
+            <div class="field-group">
+              <label>скидка (%)</label>
+              <input type="number" id="v_discSer" class="input-text trig" min="0" max="100" value="0" step="0.5">
+            </div>
+          </div>
+          <div class="field-group no-print">
+            <input type="range" id="v_discSerSlider" min="0" max="50" value="0" step="0.5" style="width:100%; accent-color: var(--c-primary)">
+          </div>
+          <div class="d-row">
+            <span>цена без ндс:</span>
+            <div class="d-val"><span id="out_priceSer">0 ₽</span><span id="out_priceSerUnit" class="u-val">(0 ₽/шт)</span></div>
+          </div>
+          <div class="d-row">
+            <span>прибыль:</span>
+            <div class="d-val"><span id="out_profitSer">0 ₽</span><span id="out_profitSerUnit" class="u-val">(0 ₽/шт)</span></div>
+          </div>
+          <div class="d-row" style="margin-bottom:0; font-weight:600">
+            <span style="color: var(--c-text-main)">цена с ндс:</span>
+            <div class="d-val"><span id="out_priceVatSer">0 ₽</span><span id="out_priceVatSerUnit" class="u-val">(0 ₽/шт)</span></div>
           </div>
         </div>
 
@@ -548,7 +594,7 @@
           </div>
           <div class="d-divider" style="margin:12px 0; background: var(--c-border);"></div>
           <div class="d-row">
-            <span>цена для заказчика (с ндс):</span>
+            <span>итого заказчику (с ндс):</span>
             <div class="d-val">
               <span id="out_finalPriceVat">0 ₽</span>
               <span id="out_finalPriceVatUnit" class="u-val" style="font-weight:400; color:inherit">(0 ₽/шт)</span>
@@ -776,6 +822,13 @@ document.addEventListener('DOMContentLoaded', () => {
           '<option value="unit"' + (d.base === 'unit' ? ' selected' : '') + '>на 1 шт</option>' +
         '</select>' +
       '</div>' +
+      '<div class="field-group" style="margin:0">' +
+        '<label>относится к</label>' +
+        '<select class="input-text t-part trig">' +
+          '<option value="prep"' + (d.part === 'ser' ? '' : ' selected') + '>подготовке</option>' +
+          '<option value="ser"' + (d.part === 'ser' ? ' selected' : '') + '>серии</option>' +
+        '</select>' +
+      '</div>' +
       '<button type="button" class="btn btn-danger row-del no-print" title="удалить">✕</button>';
     toolList.appendChild(div);
   };
@@ -830,9 +883,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const calculate = () => {
     const qty = Math.max(1, getN('v_qty'));
     const vatRate = getN('v_vat') / 100;
-    const markup = getN('v_profitMargin') / 100;
-    const targetUnit = getN('v_targetPrice');
-    const discountRate = getN('v_discountInput') / 100;
 
     const r = rates || { fotRab: 0, fotTeh: 0, amort: 0, other: 0, opr: 0, ohr: 0, credit: 0 };
     const perSecCommon = r.amort + r.other + r.opr;
@@ -848,12 +898,16 @@ document.addEventListener('DOMContentLoaded', () => {
       prepProd += fot + t * perSecCommon + mat;
     });
 
-    // оснастка — только стоимость, без производственных ставок
-    let toolProd = 0;
+    // оснастка — только стоимость, без производственных ставок;
+    // каждая позиция относится либо на подготовку, либо на серию
+    let toolPrepProd = 0, toolSerProd = 0;
     toolList.querySelectorAll('.tool-row').forEach(row => {
       const c = num(row.querySelector('.t-cost'));
-      toolProd += row.querySelector('.t-base').value === 'unit' ? c * qty : c;
+      const sum = row.querySelector('.t-base').value === 'unit' ? c * qty : c;
+      if (row.querySelector('.t-part').value === 'ser') toolSerProd += sum;
+      else toolPrepProd += sum;
     });
+    const toolProd = toolPrepProd + toolSerProd;
 
     // выпуск изделий — ввод в секундах на 1 шт
     let mfgSecUnit = 0;
@@ -891,47 +945,65 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareOhr = (v) => ohrBase > 0 ? ohrTotal * (v / ohrBase) : 0;
     const shareCr  = (v) => prodCost > 0 ? creditTotal * (v / prodCost) : 0;
 
-    const prepFull = prepProd + shareOhr(prepProd) + shareCr(prepProd);
-    const toolFull = toolProd + shareCr(toolProd);
-    const logFull  = logProd  + shareOhr(logProd)  + shareCr(logProd);
-    const matFull  = matProd  + shareOhr(matProd)  + shareCr(matProd);
-    const mfgFull  = mfgProd  + shareOhr(mfgProd)  + shareCr(mfgProd);
+    const prepFull     = prepProd     + shareOhr(prepProd)     + shareCr(prepProd);
+    const toolPrepFull = toolPrepProd + shareCr(toolPrepProd);
+    const toolSerFull  = toolSerProd  + shareCr(toolSerProd);
+    const logFull      = logProd      + shareOhr(logProd)      + shareCr(logProd);
+    const matFull      = matProd      + shareOhr(matProd)      + shareCr(matProd);
+    const mfgFull      = mfgProd      + shareOhr(mfgProd)      + shareCr(mfgProd);
 
-    const onceTotal = prepFull + toolFull + logFull;
-    const serialTotal = matFull + mfgFull;
+    // две части проекта: подготовка и серия
+    const costPrep = prepFull + toolPrepFull;
+    const costSer  = matFull + mfgFull + logFull + toolSerFull;
 
-    // цена
-    let basePriceNoVat, baseProfit;
-    if (targetUnit > 0) {
-      basePriceNoVat = targetUnit * qty;
-      baseProfit = basePriceNoVat - fullCost;
-    } else {
-      baseProfit = fullCost * markup;
-      basePriceNoVat = fullCost + baseProfit;
-    }
-    const discountAmount = basePriceNoVat * discountRate;
-    const finalPriceNoVat = basePriceNoVat - discountAmount;
+    // ценообразование по каждой части отдельно
+    const priceOf = (cost, markupId, targetId, discId, targetMultiplier) => {
+      const markup = getN(markupId) / 100;
+      const target = getN(targetId);
+      const disc = getN(discId) / 100;
+      const base = target > 0 ? target * targetMultiplier : cost * (1 + markup);
+      const price = base * (1 - disc);
+      return { price: price, profit: price - cost, vat: price * (1 + vatRate) };
+    };
+
+    const offerPrep = priceOf(costPrep, 'v_markupPrep', 'v_targetPrep', 'v_discPrep', 1);
+    const offerSer  = priceOf(costSer,  'v_markupSer',  'v_targetSer',  'v_discSer',  qty);
+
+    const finalPriceNoVat = offerPrep.price + offerSer.price;
     const finalProfit = finalPriceNoVat - fullCost;
-    const finalPriceVat = finalPriceNoVat * (1 + vatRate);
+    const finalPriceVat = offerPrep.vat + offerSer.vat;
 
     // маржинальность по переменным затратам (как в шаблоне)
     const variableCost = matProd + toolProd + fotSum + otherSum;
     const marginPct = finalPriceNoVat > 0 ? ((finalPriceNoVat - variableCost) / finalPriceNoVat) * 100 : 0;
     const roiPct = fullCost > 0 ? (finalProfit / fullCost) * 100 : 0;
 
-    setPair('out_onceBatch', 'out_onceUnit', onceTotal, qty);
+    setPair('out_costPrepBatch', 'out_costPrepUnit', costPrep, qty);
     setPair('out_prepBatch', 'out_prepUnit', prepFull, qty);
-    setPair('out_toolBatch', 'out_toolUnit', toolFull, qty);
-    setPair('out_logBatch', 'out_logUnit', logFull, qty);
-    setPair('out_serialBatch', 'out_serialUnit', serialTotal, qty);
+    setPair('out_toolPrepBatch', 'out_toolPrepUnit', toolPrepFull, qty);
+    setPair('out_costSerBatch', 'out_costSerUnit', costSer, qty);
     setPair('out_matBatch', 'out_matUnit', matFull, qty);
     setPair('out_mfgBatch', 'out_mfgUnit', mfgFull, qty);
+    setPair('out_logBatch', 'out_logUnit', logFull, qty);
+    setPair('out_toolSerBatch', 'out_toolSerUnit', toolSerFull, qty);
     setPair('out_fullCostBatch', 'out_fullCostUnit', fullCost, qty);
-    setPair('out_basePriceNoVat', 'out_basePriceNoVatUnit', basePriceNoVat, qty);
-    setPair('out_baseProfit', 'out_baseProfitUnit', baseProfit, qty);
-    setPair('out_discountAmount', 'out_discountUnit', discountAmount, qty, true);
+
+    setPair('out_pricePrep', 'out_pricePrepUnit', offerPrep.price, qty);
+    setPair('out_profitPrep', 'out_profitPrepUnit', offerPrep.profit, qty);
+    $('out_priceVatPrep').textContent = fmt(offerPrep.vat);
+
+    setPair('out_priceSer', 'out_priceSerUnit', offerSer.price, qty);
+    setPair('out_profitSer', 'out_profitSerUnit', offerSer.profit, qty);
+    setPair('out_priceVatSer', 'out_priceVatSerUnit', offerSer.vat, qty);
+
     setPair('out_finalProfit', 'out_finalProfitUnit', finalProfit, qty);
     setPair('out_finalPriceVat', 'out_finalPriceVatUnit', finalPriceVat, qty);
+
+    [['out_profitPrep', offerPrep.profit], ['out_profitSer', offerSer.profit]].forEach(p => {
+      const box = $(p[0]).parentElement;
+      box.classList.toggle('text-danger', p[1] < 0);
+      box.classList.toggle('text-success', p[1] >= 0);
+    });
 
     const profitBox = $('out_finalProfit').parentElement;
     profitBox.classList.toggle('text-danger', finalProfit < 0);
@@ -957,12 +1029,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = {
       product: $('v_product').value,
       qty: $('v_qty').value,
-      profitMargin: $('v_profitMargin').value,
-      targetPrice: $('v_targetPrice').value,
       vat: $('v_vat').value,
       transportBatch: $('v_transportBatch').value,
       laborUnit: $('v_laborUnit').value,
-      discount: $('v_discountInput').value,
+      markupPrep: $('v_markupPrep').value,
+      targetPrep: $('v_targetPrep').value,
+      discPrep: $('v_discPrep').value,
+      markupSer: $('v_markupSer').value,
+      targetSer: $('v_targetSer').value,
+      discSer: $('v_discSer').value,
       mfgMode: mfgMode,
       prep: [], tools: [], stages: [], materials: []
     };
@@ -976,7 +1051,8 @@ document.addEventListener('DOMContentLoaded', () => {
     toolList.querySelectorAll('.tool-row').forEach(row => data.tools.push({
       name: row.querySelector('.t-name').value,
       cost: row.querySelector('.t-cost').value,
-      base: row.querySelector('.t-base').value
+      base: row.querySelector('.t-base').value,
+      part: row.querySelector('.t-part').value
     }));
     stageList.querySelectorAll('.stage-row').forEach(row => data.stages.push({
       name: row.querySelector('.s-name').value,
@@ -1016,13 +1092,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     $('v_product').value = data.product || '';
     $('v_qty').value = data.qty || '1000';
-    $('v_profitMargin').value = data.profitMargin || '30';
-    $('v_targetPrice').value = data.targetPrice || '';
     $('v_vat').value = data.vat || '22';
     $('v_transportBatch').value = data.transportBatch || '0';
     $('v_laborUnit').value = data.laborUnit || '0';
-    $('v_discountInput').value = data.discount || '0';
-    $('v_discountSlider').value = data.discount || '0';
+    // старые расчёты хранили одну наценку и одну скидку на весь проект
+    $('v_markupPrep').value = data.markupPrep || data.profitMargin || '30';
+    $('v_markupSer').value = data.markupSer || data.profitMargin || '30';
+    $('v_targetPrep').value = data.targetPrep || '';
+    $('v_targetSer').value = data.targetSer || data.targetPrice || '';
+    $('v_discPrep').value = data.discPrep || data.discount || '0';
+    $('v_discSer').value = data.discSer || data.discount || '0';
+    $('v_discSerSlider').value = $('v_discSer').value;
 
     (data.prep || []).forEach(addPrepRow);
     (data.tools || []).forEach(addToolRow);
@@ -1060,9 +1140,9 @@ document.addEventListener('DOMContentLoaded', () => {
     calculate();
   });
 
-  const dSlider = $('v_discountSlider'), dInput = $('v_discountInput');
+  const dSlider = $('v_discSerSlider'), dInput = $('v_discSer');
   dSlider.addEventListener('input', () => { dInput.value = dSlider.value; calculate(); });
-  dInput.addEventListener('input', () => { dSlider.value = dInput.value; calculate(); });
+  dInput.addEventListener('input', () => { dSlider.value = dInput.value; });
 
   app.addEventListener('input', (e) => {
     if (e.target.classList.contains('trig')) calculate();
@@ -1079,13 +1159,16 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.removeItem(STORE_DATA);
     $('v_product').value = '';
     $('v_qty').value = '1000';
-    $('v_profitMargin').value = '30';
-    $('v_targetPrice').value = '';
     $('v_vat').value = '22';
     $('v_transportBatch').value = '0';
     $('v_laborUnit').value = '0';
-    $('v_discountInput').value = '0';
-    $('v_discountSlider').value = '0';
+    $('v_markupPrep').value = '30';
+    $('v_markupSer').value = '30';
+    $('v_targetPrep').value = '';
+    $('v_targetSer').value = '';
+    $('v_discPrep').value = '0';
+    $('v_discSer').value = '0';
+    $('v_discSerSlider').value = '0';
     blankForm();
     calculate();
   });
