@@ -473,12 +473,20 @@
           </div>
           <div class="d-body">
             <div class="d-row d-sub">
-              <span>работы и материалы подготовки</span>
-              <div class="d-val"><span id="out_prepBatch">0 ₽</span></div>
+              <span>работы подготовки</span>
+              <div class="d-val"><span id="out_prepWorkBatch">0 ₽</span></div>
             </div>
-            <div class="d-row d-sub" style="margin-bottom:0">
+            <div class="d-row d-sub">
+              <span>материалы подготовки</span>
+              <div class="d-val"><span id="out_prepMatBatch">0 ₽</span></div>
+            </div>
+            <div class="d-row d-sub">
               <span>оснастка на подготовку</span>
               <div class="d-val"><span id="out_toolPrepBatch">0 ₽</span></div>
+            </div>
+            <div class="d-row d-sub" style="margin-bottom:0">
+              <span>накладные расходы</span>
+              <div class="d-val"><span id="out_ovhPrepBatch">0 ₽</span></div>
             </div>
           </div>
         </div>
@@ -504,9 +512,13 @@
               <span>логистика</span>
               <div class="d-val"><span id="out_logBatch">0 ₽</span><span id="out_logUnit" class="u-val">(0 ₽/шт)</span></div>
             </div>
-            <div class="d-row d-sub" style="margin-bottom:0">
+            <div class="d-row d-sub">
               <span>оснастка на серию</span>
               <div class="d-val"><span id="out_toolSerBatch">0 ₽</span><span id="out_toolSerUnit" class="u-val">(0 ₽/шт)</span></div>
+            </div>
+            <div class="d-row d-sub" style="margin-bottom:0">
+              <span>накладные расходы</span>
+              <div class="d-val"><span id="out_ovhSerBatch">0 ₽</span><span id="out_ovhSerUnit" class="u-val">(0 ₽/шт)</span></div>
             </div>
           </div>
         </div>
@@ -896,15 +908,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const perSecCommon = r.amort + r.other + r.opr;
 
     // подготовка производства — ввод на весь заказ
-    let prepProd = 0, fotSum = 0, otherSum = 0;
+    let prepWorkProd = 0, prepMatProd = 0, fotSum = 0, otherSum = 0;
     prepList.querySelectorAll('.prep-row').forEach(row => {
       const t = num(row.querySelector('.p-time')) * (TIME_UNITS[row.querySelector('.p-unit').value] || 1);
       const fot = t * (row.querySelector('.p-who').value === 'teh' ? r.fotTeh : r.fotRab);
-      const mat = num(row.querySelector('.p-mat'));
       fotSum += fot;
       otherSum += t * r.other;
-      prepProd += fot + t * perSecCommon + mat;
+      prepWorkProd += fot + t * perSecCommon;
+      prepMatProd += num(row.querySelector('.p-mat'));
     });
+    const prepProd = prepWorkProd + prepMatProd;
 
     // оснастка — только стоимость, без производственных ставок;
     // каждая позиция относится либо на подготовку, либо на серию
@@ -953,16 +966,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareOhr = (v) => ohrBase > 0 ? ohrTotal * (v / ohrBase) : 0;
     const shareCr  = (v) => prodCost > 0 ? creditTotal * (v / prodCost) : 0;
 
-    const prepFull     = prepProd     + shareOhr(prepProd)     + shareCr(prepProd);
-    const toolPrepFull = toolPrepProd + shareCr(toolPrepProd);
-    const toolSerFull  = toolSerProd  + shareCr(toolSerProd);
-    const logFull      = logProd      + shareOhr(logProd)      + shareCr(logProd);
-    const matFull      = matProd      + shareOhr(matProd)      + shareCr(matProd);
-    const mfgFull      = mfgProd      + shareOhr(mfgProd)      + shareCr(mfgProd);
+    // накладные показываются отдельной строкой, внутрь статей не подмешиваются
+    const ovhPrep = shareOhr(prepProd) + shareCr(prepProd) + shareCr(toolPrepProd);
+    const ovhSer  = shareOhr(matProd + mfgProd + logProd)
+                  + shareCr(matProd + mfgProd + logProd + toolSerProd);
 
     // две части проекта: подготовка и серия
-    const costPrep = prepFull + toolPrepFull;
-    const costSer  = matFull + mfgFull + logFull + toolSerFull;
+    const costPrep = prepProd + toolPrepProd + ovhPrep;
+    const costSer  = matProd + mfgProd + logProd + toolSerProd + ovhSer;
 
     // ценообразование по каждой части отдельно
     const priceOf = (cost, markupId, targetId, discId, targetMultiplier) => {
@@ -987,13 +998,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const roiPct = fullCost > 0 ? (finalProfit / fullCost) * 100 : 0;
 
     setPair('out_costPrepBatch', null, costPrep, qty);
-    setPair('out_prepBatch', null, prepFull, qty);
-    setPair('out_toolPrepBatch', null, toolPrepFull, qty);
+    setPair('out_prepWorkBatch', null, prepWorkProd, qty);
+    setPair('out_prepMatBatch', null, prepMatProd, qty);
+    setPair('out_toolPrepBatch', null, toolPrepProd, qty);
+    setPair('out_ovhPrepBatch', null, ovhPrep, qty);
     setPair('out_costSerBatch', 'out_costSerUnit', costSer, qty);
-    setPair('out_matBatch', 'out_matUnit', matFull, qty);
-    setPair('out_mfgBatch', 'out_mfgUnit', mfgFull, qty);
-    setPair('out_logBatch', 'out_logUnit', logFull, qty);
-    setPair('out_toolSerBatch', 'out_toolSerUnit', toolSerFull, qty);
+    setPair('out_matBatch', 'out_matUnit', matProd, qty);
+    setPair('out_mfgBatch', 'out_mfgUnit', mfgProd, qty);
+    setPair('out_logBatch', 'out_logUnit', logProd, qty);
+    setPair('out_toolSerBatch', 'out_toolSerUnit', toolSerProd, qty);
+    setPair('out_ovhSerBatch', 'out_ovhSerUnit', ovhSer, qty);
     setPair('out_fullCostBatch', null, fullCost, qty);
 
     setPair('out_pricePrep', null, offerPrep.price, qty);
