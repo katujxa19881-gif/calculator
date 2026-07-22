@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор стоимости изделия</title>
 <style>
   :root {
     --c-bg-gradient: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
@@ -13,14 +14,14 @@
     --c-primary-hover: #4338ca;
     --c-accent: #0ea5e9;
     --c-danger: #ef4444;
-    --c-danger-hover: #dc2829;
+    --c-warn: #f59e0b;
     --c-success: #10b981;
     --c-border: #cbd5e1;
     --c-border-light: #e2e8f0;
     --c-btn-text: #ffffff;
     --radius-lg: 16px;
     --radius-md: 8px;
-    --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+    --shadow-soft: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01);
   }
 
   .app-wrap {
@@ -29,27 +30,30 @@
     background: var(--c-bg-gradient);
     padding: 30px 20px;
     border-radius: var(--radius-lg);
-    max-width: 1200px;
+    max-width: 1240px;
     margin: 0 auto;
     box-sizing: border-box;
-    box-shadow: inset 0 2px 4px rgba(255,255,255,0.5);
   }
+  .app-wrap * { box-sizing: border-box; }
 
-  .app-wrap * {
-    box-sizing: border-box;
+  .app-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
   }
+  .app-wrap h2 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .app-sub { color: var(--c-text-muted); font-size: 0.85rem; margin-top: 6px; }
 
-  .app-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-
-  @media (min-width: 860px) {
-    .app-grid {
-      grid-template-columns: 1.5fr 1fr;
-    }
-  }
+  .app-grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
+  @media (min-width: 900px) { .app-grid { grid-template-columns: 1.55fr 1fr; } }
 
   .card {
     background: var(--c-surface);
@@ -59,31 +63,31 @@
     margin-bottom: 24px;
     border: 1px solid rgba(255,255,255,0.8);
   }
-
-  .app-wrap h2 {
-    margin-top: 0;
-    margin-bottom: 24px;
-    font-size: 1.75rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: var(--c-text-main);
-  }
-
-  .app-wrap h3 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--c-text-main);
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
     border-bottom: 2px solid var(--c-border-light);
     padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+  .app-wrap h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
     text-transform: lowercase;
   }
-
-  .field-group {
-    margin-bottom: 16px;
+  .app-wrap h3 .hint-note {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--c-text-muted);
+    text-transform: none;
+    margin-top: 4px;
   }
 
+  .field-group { margin-bottom: 16px; }
   .field-group label {
     display: block;
     margin-bottom: 8px;
@@ -92,7 +96,6 @@
     color: var(--c-text-muted);
     text-transform: lowercase;
   }
-
   .input-text {
     width: 100%;
     padding: 12px;
@@ -103,41 +106,33 @@
     background-color: #f8fafc;
     transition: all 0.2s ease;
   }
-
   .input-text:focus {
     outline: none;
     border-color: var(--c-primary);
     background-color: var(--c-surface);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
   }
+  .input-target { border-color: var(--c-accent); background-color: rgba(14,165,233,0.02); }
 
-  .input-target {
-    border-color: var(--c-accent);
-    background-color: rgba(14, 165, 233, 0.02);
-  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .grid-3 { grid-template-columns: 1fr 1fr; } }
 
-  .grid-2 {
+  .row-line {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-
-  .mat-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr auto;
-    gap: 12px;
+    gap: 10px;
     align-items: end;
-    margin-bottom: 16px;
-    padding-bottom: 16px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
     border-bottom: 1px dashed var(--c-border-light);
   }
-
-  @media (max-width: 640px) {
-    .mat-row {
-      grid-template-columns: 1fr 1fr;
-    }
-    .mat-row .m-name { grid-column: span 2; }
-    .mat-row .m-del { grid-column: span 2; }
+  .prep-row { grid-template-columns: 2fr 1.3fr 1fr 0.8fr 1.2fr auto; }
+  .tool-row { grid-template-columns: 2.4fr 1.2fr 1.3fr auto; }
+  .stage-row { grid-template-columns: 2.4fr 1.2fr auto; }
+  .mat-row  { grid-template-columns: 2fr 1fr 1fr auto; }
+  @media (max-width: 760px) {
+    .prep-row, .tool-row, .stage-row, .mat-row { grid-template-columns: 1fr 1fr; }
+    .row-line .span-all { grid-column: span 2; }
   }
 
   .btn {
@@ -152,94 +147,102 @@
     transition: all 0.2s;
     text-align: center;
   }
-
-  .btn:hover {
-    background-color: var(--c-primary-hover);
-    transform: translateY(-1px);
-  }
-
+  .btn:hover { background-color: var(--c-primary-hover); }
   .btn-danger {
     background-color: var(--c-surface);
     color: var(--c-danger) !important;
     border: 1px solid var(--c-border);
     padding: 12px;
   }
-
-  .btn-danger:hover {
-    background-color: var(--c-danger);
-    color: var(--c-btn-text) !important;
-    border-color: var(--c-danger);
-  }
-
+  .btn-danger:hover { background-color: var(--c-danger); color: var(--c-btn-text) !important; }
   .btn-outline {
     background-color: transparent;
     color: var(--c-primary) !important;
     border: 2px dashed var(--c-primary);
   }
+  .btn-outline:hover { background-color: rgba(79,70,229,0.05); }
+  .btn-quiet {
+    background: transparent;
+    border: 1px solid var(--c-border);
+    color: var(--c-text-muted) !important;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-quiet:hover { background: #f1f5f9; }
 
-  .btn-outline:hover {
-    background-color: rgba(79, 70, 229, 0.05);
-    color: var(--c-primary-hover) !important;
+  .toggle {
+    display: inline-flex;
+    background: #f1f5f9;
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .toggle button {
+    border: none;
+    background: transparent;
+    padding: 7px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--c-text-muted);
+    white-space: nowrap;
+  }
+  .toggle button.is-on {
+    background: var(--c-surface);
+    color: var(--c-primary);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   }
 
-  .slider-box {
-    display: flex;
+  .rates-chip {
+    display: inline-flex;
     align-items: center;
-    gap: 16px;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    border: 1px solid var(--c-border);
+    background: var(--c-surface);
+    color: var(--c-text-muted);
   }
-  
-  .slider-box input[type="range"] {
-    flex-grow: 1;
-    accent-color: var(--c-primary);
-  }
+  .rates-chip.ok { border-color: var(--c-success); color: var(--c-success); }
+  .rates-chip.bad { border-color: var(--c-warn); color: var(--c-warn); }
 
-  .slider-box input[type="number"] {
-    width: 90px;
-  }
-
-  .dash-panel {
-    position: sticky;
-    top: 20px;
-  }
-
+  .dash-panel { position: sticky; top: 20px; }
   .d-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     margin-bottom: 12px;
     font-size: 0.95rem;
   }
+  .d-row > span:first-child { color: var(--c-text-muted); text-transform: lowercase; }
+  .d-val { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .u-val { font-size: 0.85em; color: var(--c-text-muted); font-weight: 400; margin-left: 6px; white-space: nowrap; }
+  .d-divider { height: 1px; background: var(--c-border-light); margin: 16px 0; }
+  .d-total { font-size: 1.1rem; }
+  .d-sub { padding-left: 14px; font-size: 0.88rem; border-left: 2px solid var(--c-border-light); }
+  .d-sub .d-val { font-weight: 500; }
 
-  .d-row span:first-child {
-    color: var(--c-text-muted);
-    text-transform: lowercase;
+  .d-group {
+    background: #f8fafc;
+    border: 1px solid var(--c-border-light);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    margin-bottom: 16px;
   }
+  .d-group > .d-row:first-child { margin-bottom: 0; font-weight: 600; }
+  .d-group > .d-row:first-child > span:first-child { color: var(--c-text-main); }
+  .d-group.open > .d-row:first-child { margin-bottom: 14px; }
+  .d-group .d-body { display: none; }
+  .d-group.open .d-body { display: block; }
+  .caret { font-size: 0.7em; color: var(--c-text-muted); margin-right: 6px; }
 
-  .d-val {
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-  }
-
-  .u-val {
-    font-size: 0.85em;
-    color: var(--c-text-muted);
-    font-weight: 400;
-    margin-left: 6px;
-    white-space: nowrap;
-  }
-
-  .d-divider {
-    height: 1px;
-    background: var(--c-border-light);
-    margin: 16px 0;
-  }
-
-  .d-total {
-    font-size: 1.1rem;
-    margin-top: 16px;
-  }
-  
   .d-highlight {
     background: #f8fafc;
     padding: 16px;
@@ -247,203 +250,304 @@
     margin-top: 20px;
     border: 1px solid var(--c-accent);
   }
-
-  .d-highlight .d-row:last-child {
-    margin-bottom: 0;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--c-primary);
-  }
-
-  .text-danger {
-    color: var(--c-danger) !important;
-  }
-  
-  .text-success {
-    color: var(--c-success) !important;
-  }
+  .d-highlight .d-row:last-child { margin-bottom: 0; font-size: 1.2rem; font-weight: 700; color: var(--c-primary); }
 
   .discount-block {
-    background: rgba(14, 165, 233, 0.05);
+    background: rgba(14,165,233,0.05);
     padding: 16px;
     border-radius: var(--radius-md);
-    border: 1px solid rgba(14, 165, 233, 0.2);
+    border: 1px solid rgba(14,165,233,0.2);
     margin-top: 20px;
   }
+  .slider-box { display: flex; align-items: center; gap: 16px; }
+  .slider-box input[type="range"] { flex-grow: 1; accent-color: var(--c-primary); }
+  .slider-box input[type="number"] { width: 92px; }
 
+  .text-danger { color: var(--c-danger) !important; }
+  .text-success { color: var(--c-success) !important; }
+
+  .alert {
+    display: none;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+    line-height: 1.45;
+  }
+  .alert.show { display: block; }
+  .alert-warn { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+  .modal-back {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,0.55);
+    z-index: 9999;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .modal-back.show { display: flex; align-items: flex-start; justify-content: center; }
+  .modal {
+    background: var(--c-surface);
+    border-radius: var(--radius-lg);
+    padding: 26px;
+    max-width: 560px;
+    width: 100%;
+    margin: auto;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: var(--c-text-main);
+  }
+  .modal h3 { margin-bottom: 16px; font-size: 1.05rem; font-weight: 600; text-transform: lowercase; }
+  .modal .muted { color: var(--c-text-muted); font-size: 0.85rem; line-height: 1.5; }
+  .key-box {
+    width: 100%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+    padding: 12px;
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    background: #f8fafc;
+    resize: vertical;
+    min-height: 84px;
+    word-break: break-all;
+  }
+  .master-zone { display: none; margin-top: 20px; border-top: 1px solid var(--c-border-light); padding-top: 20px; }
+  .master-zone.show { display: block; }
+  .link-quiet {
+    background: none; border: none; padding: 0; cursor: pointer;
+    color: var(--c-text-muted); font-size: 0.78rem; text-decoration: underline dotted;
+  }
+
+  @media print {
+    body { background: #fff; }
+    .app-wrap { background: #fff; padding: 0; max-width: none; }
+    .card { box-shadow: none; border: 1px solid #e2e8f0; break-inside: avoid; }
+    .no-print, .btn, .btn-danger, .btn-quiet, .rates-chip, .toggle, input[type="range"] { display: none !important; }
+    .app-grid { grid-template-columns: 1fr; }
+    .d-group .d-body { display: block !important; }
+    .input-text { border: none; background: transparent; padding: 4px 0; font-weight: 600; }
+  }
 </style>
 </head>
 <body>
 
 <div class="app-wrap" id="costCalculator">
-  <h2>Калькулятор экономики проекта</h2>
-  
+
+  <div class="app-head">
+    <div>
+      <h2>Калькулятор стоимости изделия</h2>
+      <div class="app-sub">поэтапный расчёт: подготовка производства, оснастка, выпуск, материалы, логистика</div>
+    </div>
+    <button type="button" id="btnRates" class="rates-chip bad no-print">тарифы не заданы</button>
+  </div>
+
+  <div id="alertRates" class="alert alert-warn">
+    Не введён <b>код тарифов</b> — расчёт стоимости невозможен. Нажмите «тарифы» вверху справа и вставьте код, который выдаёт финансовый отдел.
+  </div>
+
   <div class="app-grid">
     <div class="col-left">
-      
-      <div class="card">
-        <h3>константы и параметры</h3>
-        <div class="grid-2">
-          <div class="field-group">
-            <label>стоимость прямых затрат (₽/сек)</label>
-            <input type="number" id="v_costDirect" class="input-text trig" min="0" step="0.01" value="1.50">
-          </div>
-          <div class="field-group">
-            <label>стоимость накладных затрат (₽/сек)</label>
-            <input type="number" id="v_costOverhead" class="input-text trig" min="0" step="0.01" value="1.00">
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="field-group">
-            <label>базовая рентабельность (%)</label>
-            <input type="number" id="v_profitMargin" class="input-text trig" min="0" max="100" value="30">
-          </div>
-          <div class="field-group">
-            <label style="color: var(--c-accent); font-weight: 600;">целевая цена (таргет) за 1 шт (₽)</label>
-            <input type="number" id="v_targetPrice" class="input-text input-target trig" min="0" placeholder="если 0, расчет по %">
-          </div>
-        </div>
-        <div class="field-group">
-          <label>ставка ндс</label>
-          <select id="v_vat" class="input-text trig">
-            <option value="22" selected>22%</option>
-            <option value="0">без ндс</option>
-          </select>
-        </div>
-      </div>
 
       <div class="card">
-        <h3>заказ и производство</h3>
-        <div class="field-group">
-          <label>наименование изделия</label>
-          <input type="text" class="input-text" placeholder="например: плата управления...">
-        </div>
+        <div class="card-head"><h3>заказ</h3></div>
         <div class="grid-2">
           <div class="field-group">
-            <label>объем выпуска (шт)</label>
+            <label>наименование изделия</label>
+            <input type="text" id="v_product" class="input-text txt" placeholder="например: плата управления...">
+          </div>
+          <div class="field-group">
+            <label>объём выпуска (шт)</label>
             <input type="number" id="v_qty" class="input-text trig" min="1" value="1000">
           </div>
+        </div>
+        <div class="grid-3">
           <div class="field-group">
-            <label>труд на 1 шт (сек)</label>
-            <input type="number" id="v_laborUnit" class="input-text trig" min="0" value="180">
+            <label>наценка на себестоимость (%)</label>
+            <input type="number" id="v_profitMargin" class="input-text trig" min="0" max="300" value="30">
+          </div>
+          <div class="field-group">
+            <label style="color: var(--c-accent); font-weight: 600;">целевая цена за 1 шт (₽)</label>
+            <input type="number" id="v_targetPrice" class="input-text input-target trig" min="0" placeholder="если пусто — по наценке">
+          </div>
+          <div class="field-group">
+            <label>ставка ндс</label>
+            <select id="v_vat" class="input-text trig">
+              <option value="22" selected>22%</option>
+              <option value="20">20%</option>
+              <option value="0">без ндс</option>
+            </select>
           </div>
         </div>
-        <div class="field-group">
-          <label>транспортные расходы на всю партию (₽)</label>
-          <input type="number" id="v_transportBatch" class="input-text trig" min="0" step="100" value="5000">
+        <div class="field-group" style="margin-bottom:0">
+          <label>логистика на весь заказ (₽)</label>
+          <input type="number" id="v_transportBatch" class="input-text trig" min="0" step="100" value="0">
         </div>
       </div>
 
       <div class="card">
-        <h3>материалы (расход на 1 шт)</h3>
-        <div id="matList">
-          <!-- динамические строки -->
+        <div class="card-head">
+          <h3>подготовка производства
+            <span class="hint-note">время и материалы указываются на весь заказ — калькулятор сам разнесёт их на партию</span>
+          </h3>
+          <button type="button" id="btnPrep" class="btn-quiet no-print">+ строка</button>
         </div>
-        <button type="button" id="btnMat" class="btn btn-outline" style="width: 100%">+ добавить материал</button>
-        <button type="button" id="btnReset" class="btn btn-outline" style="width: 100%; margin-top: 12px; border-color: var(--c-border); color: var(--c-text-muted) !important;">сбросить сохраненные данные</button>
+        <div id="prepList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>оснастка
+            <span class="hint-note">покупная оснастка: указывается только её стоимость, производственные коэффициенты на неё не начисляются</span>
+          </h3>
+          <button type="button" id="btnTool" class="btn-quiet no-print">+ строка</button>
+        </div>
+        <div id="toolList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>выпуск изделий</h3>
+          <div class="toggle no-print" id="mfgToggle">
+            <button type="button" data-mode="simple" class="is-on">общая трудоёмкость</button>
+            <button type="button" data-mode="stages">по этапам</button>
+          </div>
+        </div>
+        <div id="mfgSimple">
+          <div class="field-group" style="margin-bottom:0">
+            <label>трудоёмкость выпуска на 1 шт (сек) — без подготовки производства и оснастки</label>
+            <input type="number" id="v_laborUnit" class="input-text trig" min="0" value="0">
+          </div>
+        </div>
+        <div id="mfgStages" style="display:none">
+          <div id="stageList"></div>
+          <button type="button" id="btnStage" class="btn btn-outline no-print" style="width:100%">+ добавить этап</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>материалы
+            <span class="hint-note">расход на 1 изделие</span>
+          </h3>
+          <button type="button" id="btnMat" class="btn-quiet no-print">+ строка</button>
+        </div>
+        <div id="matList"></div>
+      </div>
+
+      <div class="card no-print">
+        <div class="grid-2">
+          <button type="button" id="btnPrint" class="btn">версия для печати / pdf</button>
+          <button type="button" id="btnReset" class="btn btn-outline" style="border-color:var(--c-border); color:var(--c-text-muted) !important;">очистить расчёт</button>
+        </div>
       </div>
 
     </div>
 
     <div class="col-right">
       <div class="card dash-panel">
-        
-        <h3>себестоимость</h3>
-        <div class="d-row">
-          <span>материалы:</span>
-          <div class="d-val">
-            <span id="out_matBatch">0 ₽</span>
-            <span id="out_matUnit" class="u-val">(0 ₽/шт)</span>
+
+        <div id="alertTarget" class="alert alert-danger">
+          Цена ниже себестоимости — проект убыточный.
+        </div>
+
+        <div class="d-group open" id="grpOnce">
+          <div class="d-row" data-toggle="grpOnce" style="cursor:pointer">
+            <span><span class="caret">▼</span>разовые затраты по заказу</span>
+            <div class="d-val">
+              <span id="out_onceBatch">0 ₽</span>
+              <span id="out_onceUnit" class="u-val">(0 ₽/шт)</span>
+            </div>
+          </div>
+          <div class="d-body">
+            <div class="d-row d-sub">
+              <span>подготовка производства</span>
+              <div class="d-val"><span id="out_prepBatch">0 ₽</span><span id="out_prepUnit" class="u-val">(0 ₽/шт)</span></div>
+            </div>
+            <div class="d-row d-sub">
+              <span>оснастка</span>
+              <div class="d-val"><span id="out_toolBatch">0 ₽</span><span id="out_toolUnit" class="u-val">(0 ₽/шт)</span></div>
+            </div>
+            <div class="d-row d-sub" style="margin-bottom:0">
+              <span>логистика</span>
+              <div class="d-val"><span id="out_logBatch">0 ₽</span><span id="out_logUnit" class="u-val">(0 ₽/шт)</span></div>
+            </div>
           </div>
         </div>
-        <div class="d-row">
-          <span>фот прямой:</span>
-          <div class="d-val">
-            <span id="out_laborDirectBatch">0 ₽</span>
-            <span id="out_laborDirectUnit" class="u-val">(0 ₽/шт)</span>
+
+        <div class="d-group open" id="grpSerial">
+          <div class="d-row" data-toggle="grpSerial" style="cursor:pointer">
+            <span><span class="caret">▼</span>серийные затраты</span>
+            <div class="d-val">
+              <span id="out_serialBatch">0 ₽</span>
+              <span id="out_serialUnit" class="u-val">(0 ₽/шт)</span>
+            </div>
+          </div>
+          <div class="d-body">
+            <div class="d-row d-sub">
+              <span>материалы</span>
+              <div class="d-val"><span id="out_matBatch">0 ₽</span><span id="out_matUnit" class="u-val">(0 ₽/шт)</span></div>
+            </div>
+            <div class="d-row d-sub" style="margin-bottom:0">
+              <span>выпуск изделий</span>
+              <div class="d-val"><span id="out_mfgBatch">0 ₽</span><span id="out_mfgUnit" class="u-val">(0 ₽/шт)</span></div>
+            </div>
           </div>
         </div>
-        <div class="d-row">
-          <span>доставка:</span>
-          <div class="d-val">
-            <span id="out_transBatch">0 ₽</span>
-            <span id="out_transUnit" class="u-val">(0 ₽/шт)</span>
-          </div>
-        </div>
-        <div class="d-row" style="margin-top: 8px; font-weight: 500;">
-          <span style="color: var(--c-text-main);">итого прямые расходы:</span>
-          <div class="d-val">
-            <span id="out_directCostBatch">0 ₽</span>
-            <span id="out_directCostUnit" class="u-val">(0 ₽/шт)</span>
-          </div>
-        </div>
-        <div class="d-divider"></div>
-        <div class="d-row">
-          <span>накладные расходы:</span>
-          <div class="d-val">
-            <span id="out_laborOverheadBatch">0 ₽</span>
-            <span id="out_laborOverheadUnit" class="u-val">(0 ₽/шт)</span>
-          </div>
-        </div>
+
         <div class="d-row d-total">
           <span>полная себестоимость:</span>
           <div class="d-val">
             <span id="out_fullCostBatch">0 ₽</span>
-            <span id="out_fullCostUnit" class="u-val" style="font-weight: 400;">(0 ₽/шт)</span>
+            <span id="out_fullCostUnit" class="u-val" style="font-weight:400">(0 ₽/шт)</span>
           </div>
         </div>
 
-        <h3 style="margin-top: 30px;">коммерческое предложение</h3>
+        <div class="d-divider"></div>
+
+        <h3 style="margin-bottom:16px">коммерческое предложение</h3>
         <div class="d-row">
           <span>базовая цена без ндс:</span>
-          <div class="d-val">
-            <span id="out_basePriceNoVat">0 ₽</span>
-            <span id="out_basePriceNoVatUnit" class="u-val">(0 ₽/шт)</span>
-          </div>
+          <div class="d-val"><span id="out_basePriceNoVat">0 ₽</span><span id="out_basePriceNoVatUnit" class="u-val">(0 ₽/шт)</span></div>
         </div>
         <div class="d-row">
-          <span>расчетная прибыль:</span>
-          <div class="d-val">
-            <span id="out_baseProfit">0 ₽</span>
-            <span id="out_baseProfitUnit" class="u-val">(0 ₽/шт)</span>
-          </div>
+          <span>расчётная прибыль:</span>
+          <div class="d-val"><span id="out_baseProfit">0 ₽</span><span id="out_baseProfitUnit" class="u-val">(0 ₽/шт)</span></div>
         </div>
 
         <div class="discount-block">
-          <div class="field-group" style="margin-bottom: 12px;">
-            <label style="color: var(--c-primary); font-weight: 600;">предоставить скидку клиенту (%)</label>
+          <div class="field-group" style="margin-bottom:12px">
+            <label style="color: var(--c-primary); font-weight:600">скидка заказчику (%)</label>
             <div class="slider-box">
-              <input type="range" id="v_discountSlider" class="trig" min="0" max="50" value="0" step="0.5">
-              <input type="number" id="v_discountInput" class="input-text trig" min="0" max="100" value="0" step="0.5">
+              <input type="range" id="v_discountSlider" class="no-print" min="0" max="50" value="0" step="0.5">
+              <input type="number" id="v_discountInput" class="input-text" min="0" max="100" value="0" step="0.5">
             </div>
           </div>
-          <div class="d-row">
+          <div class="d-row" style="margin-bottom:0">
             <span>сумма скидки:</span>
-            <div class="d-val">
-              <span id="out_discountAmount" class="text-danger">0 ₽</span>
-              <span id="out_discountUnit" class="u-val">(0 ₽/шт)</span>
-            </div>
+            <div class="d-val"><span id="out_discountAmount" class="text-danger">0 ₽</span><span id="out_discountUnit" class="u-val">(0 ₽/шт)</span></div>
           </div>
         </div>
 
         <div class="d-highlight">
           <div class="d-row">
-            <span>финальная прибыль:</span>
-            <div class="d-val">
-              <span id="out_finalProfit">0 ₽</span>
-              <span id="out_finalProfitUnit" class="u-val" style="color: inherit;">(0 ₽/шт)</span>
-            </div>
+            <span>прибыль по проекту:</span>
+            <div class="d-val"><span id="out_finalProfit">0 ₽</span><span id="out_finalProfitUnit" class="u-val" style="color:inherit">(0 ₽/шт)</span></div>
           </div>
           <div class="d-row">
-            <span>маржа проекта:</span>
-            <span id="out_marginPercent" style="font-weight: 700;">0%</span>
+            <span>маржинальность:</span>
+            <span id="out_marginPercent" class="d-val">0%</span>
           </div>
-          <div class="d-divider" style="margin: 12px 0; background: var(--c-border);"></div>
           <div class="d-row">
-            <span>цена для клиента (с ндс):</span>
+            <span>рентабельность к себестоимости:</span>
+            <span id="out_roiPercent" class="d-val">0%</span>
+          </div>
+          <div class="d-divider" style="margin:12px 0; background: var(--c-border);"></div>
+          <div class="d-row">
+            <span>цена для заказчика (с ндс):</span>
             <div class="d-val">
               <span id="out_finalPriceVat">0 ₽</span>
-              <span id="out_finalPriceVatUnit" class="u-val" style="font-weight: 400; color: inherit;">(0 ₽/шт)</span>
+              <span id="out_finalPriceVatUnit" class="u-val" style="font-weight:400; color:inherit">(0 ₽/шт)</span>
             </div>
           </div>
         </div>
@@ -453,262 +557,596 @@
   </div>
 </div>
 
+<div class="modal-back no-print" id="ratesModal">
+  <div class="modal">
+    <h3>тарифы расчёта</h3>
+    <p class="muted">Код тарифов выдаёт финансовый отдел. Вставьте его один раз — он сохранится в этом браузере.</p>
+    <div class="field-group" style="margin-top:16px">
+      <label>код тарифов</label>
+      <textarea id="keyInput" class="key-box" placeholder="CTS1-..."></textarea>
+    </div>
+    <div id="keyMsg" class="muted" style="margin-bottom:16px"></div>
+    <div class="grid-2">
+      <button type="button" id="btnKeyApply" class="btn">применить</button>
+      <button type="button" id="btnKeyClose" class="btn btn-outline">закрыть</button>
+    </div>
+
+    <div style="margin-top:18px; text-align:center">
+      <button type="button" class="link-quiet" id="btnMaster">служебный режим</button>
+    </div>
+
+    <div class="master-zone" id="masterZone">
+      <div class="field-group" id="pwdField">
+        <label>пароль</label>
+        <input type="password" id="masterPwd" class="input-text" placeholder="••••••">
+        <div id="pwdMsg" class="muted" style="margin-top:8px"></div>
+        <button type="button" id="btnPwdOk" class="btn" style="margin-top:12px; width:100%">войти</button>
+      </div>
+
+      <div id="ratesEditor" style="display:none">
+        <p class="muted">Значения соответствуют листу «Константы_и_ставки». После правки нажмите «сгенерировать код» и отправьте строку коллегам.</p>
+        <div class="grid-2" style="margin-top:16px">
+          <div class="field-group"><label>ставка фот рабочих (₽/сек)</label><input type="number" id="r_fotRab" class="input-text" step="0.000001"></div>
+          <div class="field-group"><label>ставка фот технологов (₽/сек)</label><input type="number" id="r_fotTeh" class="input-text" step="0.000001"></div>
+          <div class="field-group"><label>ставка амортизации (₽/сек)</label><input type="number" id="r_amort" class="input-text" step="0.000001"></div>
+          <div class="field-group"><label>ставка прочих пр (₽/сек)</label><input type="number" id="r_other" class="input-text" step="0.000001"></div>
+          <div class="field-group"><label>ставка опр (₽/сек)</label><input type="number" id="r_opr" class="input-text" step="0.000001"></div>
+          <div class="field-group"><label>коэффициент охр и кр</label><input type="number" id="r_ohr" class="input-text" step="0.000001"></div>
+          <div class="field-group"><label>коэффициент % по кредиту</label><input type="number" id="r_credit" class="input-text" step="0.000001"></div>
+          <div class="field-group"><label>метка версии</label><input type="text" id="r_label" class="input-text" placeholder="2026"></div>
+        </div>
+        <button type="button" id="btnKeyGen" class="btn" style="width:100%">сгенерировать код</button>
+        <div class="field-group" style="margin-top:16px; margin-bottom:0">
+          <label>код для рассылки</label>
+          <textarea id="keyOutput" class="key-box" readonly></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const calc = document.getElementById('costCalculator');
-  const matList = document.getElementById('matList');
-  
-  const getN = (id) => {
-    const el = document.getElementById(id);
+  const app = document.getElementById('costCalculator');
+  const $ = (id) => document.getElementById(id);
+
+  // ставки по умолчанию — лист «Константы_и_ставки», редакция 2026
+  const DEFAULT_RATES = {
+    fotRab: 0.12345065691776524,
+    fotTeh: 0.2230002900370329,
+    amort:  0.05871363057270686,
+    other:  0.0384671078472861,
+    opr:    0.31243452409230843,
+    ohr:    0.41477479676928597,
+    credit: 0,
+    label:  '2026'
+  };
+  // sha-256 пароля служебного режима (по умолчанию: цтс-2026)
+  const MASTER_HASH = '91ea4e668a3f32fece593d08de0cf9334418fcc8913d2b530da70d9d40e8bd46';
+
+  const STORE_DATA = 'calc_cts_data_v2';
+  const STORE_RATES = 'calc_cts_rates_v2';
+
+  const STAGES = ['SMT', 'THT', 'FAS', 'монтаж', 'сборка', 'тестирование', 'упаковка', 'загрузка ПО'];
+  const TIME_UNITS = { 'сек': 1, 'мин': 60, 'ч': 3600 };
+
+  let rates = null;
+  let mfgMode = 'simple';
+
+  // ── утилиты ──────────────────────────────────────────────
+  const num = (el) => {
     if (!el) return 0;
     const v = parseFloat(el.value);
     return isNaN(v) ? 0 : v;
   };
-  
-  const getVal = (el) => {
-    const v = parseFloat(el.value);
-    return isNaN(v) ? 0 : v;
+  const getN = (id) => num($(id));
+  const esc = (s) => String(s == null ? '' : s).replace(/"/g, '&quot;');
+
+  const fmt = (n) => new Intl.NumberFormat('ru-RU', {
+    minimumFractionDigits: 0, maximumFractionDigits: 0
+  }).format(n) + ' ₽';
+
+  const fmtUnit = (n) => new Intl.NumberFormat('ru-RU', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2
+  }).format(n) + ' ₽';
+
+  const fmtPct = (n) => new Intl.NumberFormat('ru-RU', {
+    style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1
+  }).format(n / 100);
+
+  // ── код тарифов ──────────────────────────────────────────
+  const crc = (s) => {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h.toString(36).slice(-4).toUpperCase();
   };
 
-  const fmt = (num) => {
-    return new Intl.NumberFormat('ru-RU', { 
-      style: 'decimal',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(num) + ' ₽';
+  const packRates = (r) => {
+    const arr = [r.fotRab, r.fotTeh, r.amort, r.other, r.opr, r.ohr, r.credit, r.label];
+    const body = btoa(unescape(encodeURIComponent(JSON.stringify(arr))));
+    return 'CTS1-' + body + '-' + crc(body);
   };
 
-  const fmtPct = (num) => {
-    return new Intl.NumberFormat('ru-RU', {
-      style: 'percent',
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1
-    }).format(num / 100);
+  const unpackRates = (key) => {
+    const parts = String(key).trim().split('-');
+    if (parts.length !== 3 || parts[0] !== 'CTS1') throw new Error('неверный формат кода');
+    if (crc(parts[1]) !== parts[2].toUpperCase()) throw new Error('код повреждён при копировании');
+    const a = JSON.parse(decodeURIComponent(escape(atob(parts[1]))));
+    if (!Array.isArray(a) || a.length < 7) throw new Error('код неполный');
+    return {
+      fotRab: +a[0], fotTeh: +a[1], amort: +a[2], other: +a[3],
+      opr: +a[4], ohr: +a[5], credit: +a[6], label: a[7] || ''
+    };
   };
 
-  const addMatRow = (name = '', norm = '1', price = '0') => {
+  const setRates = (r) => {
+    rates = r;
+    const chip = $('btnRates');
+    if (r) {
+      chip.className = 'rates-chip ok no-print';
+      chip.textContent = 'тарифы ' + (r.label || 'загружены');
+      $('alertRates').classList.remove('show');
+    } else {
+      chip.className = 'rates-chip bad no-print';
+      chip.textContent = 'тарифы не заданы';
+      $('alertRates').classList.add('show');
+    }
+  };
+
+  // ── строки таблиц ────────────────────────────────────────
+  const prepList = $('prepList'), toolList = $('toolList'),
+        stageList = $('stageList'), matList = $('matList');
+
+  const addPrepRow = (d) => {
+    d = d || {};
     const div = document.createElement('div');
-    div.className = 'mat-row';
-    div.innerHTML = `
-      <div class="field-group m-name" style="margin:0">
-        <label>материал</label>
-        <input type="text" class="input-text m-name-val trig" placeholder="название..." value="${name.replace(/"/g, '&quot;')}">
-      </div>
-      <div class="field-group" style="margin:0">
-        <label>расход</label>
-        <input type="number" class="input-text m-norm trig" min="0" step="0.001" value="${norm}">
-      </div>
-      <div class="field-group" style="margin:0">
-        <label>цена за ед.</label>
-        <input type="number" class="input-text m-price trig" min="0" step="0.1" value="${price}">
-      </div>
-      <button type="button" class="btn btn-danger m-del" title="удалить">✕</button>
-    `;
+    div.className = 'row-line prep-row';
+    div.innerHTML =
+      '<div class="field-group span-all" style="margin:0">' +
+        '<label>что делаем</label>' +
+        '<input type="text" class="input-text p-name txt" placeholder="напр. подготовка (рамки)" value="' + esc(d.name) + '">' +
+      '</div>' +
+      '<div class="field-group" style="margin:0">' +
+        '<label>исполнитель</label>' +
+        '<select class="input-text p-who trig">' +
+          '<option value="teh"' + (d.who === 'rab' ? '' : ' selected') + '>технолог</option>' +
+          '<option value="rab"' + (d.who === 'rab' ? ' selected' : '') + '>рабочий / чпу</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="field-group" style="margin:0">' +
+        '<label>время на заказ</label>' +
+        '<input type="number" class="input-text p-time trig" min="0" step="0.1" value="' + (d.time != null ? esc(d.time) : 0) + '">' +
+      '</div>' +
+      '<div class="field-group" style="margin:0">' +
+        '<label>ед.</label>' +
+        '<select class="input-text p-unit trig">' +
+          Object.keys(TIME_UNITS).map(u => '<option value="' + u + '"' + (d.unit === u ? ' selected' : '') + '>' + u + '</option>').join('') +
+        '</select>' +
+      '</div>' +
+      '<div class="field-group" style="margin:0">' +
+        '<label>материалы, ₽</label>' +
+        '<input type="number" class="input-text p-mat trig" min="0" step="10" value="' + (d.mat != null ? esc(d.mat) : 0) + '">' +
+      '</div>' +
+      '<button type="button" class="btn btn-danger row-del no-print" title="удалить">✕</button>';
+    prepList.appendChild(div);
+  };
+
+  const addToolRow = (d) => {
+    d = d || {};
+    const div = document.createElement('div');
+    div.className = 'row-line tool-row';
+    div.innerHTML =
+      '<div class="field-group span-all" style="margin:0">' +
+        '<label>оснастка</label>' +
+        '<input type="text" class="input-text t-name txt" placeholder="напр. трафарет / паллета" value="' + esc(d.name) + '">' +
+      '</div>' +
+      '<div class="field-group" style="margin:0">' +
+        '<label>стоимость, ₽</label>' +
+        '<input type="number" class="input-text t-cost trig" min="0" step="100" value="' + (d.cost != null ? esc(d.cost) : 0) + '">' +
+      '</div>' +
+      '<div class="field-group" style="margin:0">' +
+        '<label>база</label>' +
+        '<select class="input-text t-base trig">' +
+          '<option value="order"' + (d.base === 'unit' ? '' : ' selected') + '>на заказ</option>' +
+          '<option value="unit"' + (d.base === 'unit' ? ' selected' : '') + '>на 1 шт</option>' +
+        '</select>' +
+      '</div>' +
+      '<button type="button" class="btn btn-danger row-del no-print" title="удалить">✕</button>';
+    toolList.appendChild(div);
+  };
+
+  const addStageRow = (d) => {
+    d = d || {};
+    const div = document.createElement('div');
+    div.className = 'row-line stage-row';
+    div.innerHTML =
+      '<div class="field-group span-all" style="margin:0">' +
+        '<label>этап</label>' +
+        '<select class="input-text s-name trig">' +
+          STAGES.map(s => '<option value="' + s + '"' + (d.name === s ? ' selected' : '') + '>' + s + '</option>').join('') +
+        '</select>' +
+      '</div>' +
+      '<div class="field-group" style="margin:0">' +
+        '<label>время на 1 шт, сек</label>' +
+        '<input type="number" class="input-text s-time trig" min="0" step="0.1" value="' + (d.time != null ? esc(d.time) : 0) + '">' +
+      '</div>' +
+      '<button type="button" class="btn btn-danger row-del no-print" title="удалить">✕</button>';
+    stageList.appendChild(div);
+  };
+
+  const addMatRow = (d) => {
+    d = d || {};
+    const div = document.createElement('div');
+    div.className = 'row-line mat-row';
+    div.innerHTML =
+      '<div class="field-group span-all" style="margin:0">' +
+        '<label>материал</label>' +
+        '<input type="text" class="input-text m-name txt" placeholder="название..." value="' + esc(d.name) + '">' +
+      '</div>' +
+      '<div class="field-group" style="margin:0">' +
+        '<label>расход на 1 шт</label>' +
+        '<input type="number" class="input-text m-norm trig" min="0" step="0.001" value="' + (d.norm != null ? esc(d.norm) : 1) + '">' +
+      '</div>' +
+      '<div class="field-group" style="margin:0">' +
+        '<label>цена за ед.</label>' +
+        '<input type="number" class="input-text m-price trig" min="0" step="0.1" value="' + (d.price != null ? esc(d.price) : 0) + '">' +
+      '</div>' +
+      '<button type="button" class="btn btn-danger row-del no-print" title="удалить">✕</button>';
     matList.appendChild(div);
   };
 
-  const saveToStorage = () => {
-    const data = {
-      costDirect: document.getElementById('v_costDirect').value,
-      costOverhead: document.getElementById('v_costOverhead').value,
-      profitMargin: document.getElementById('v_profitMargin').value,
-      targetPrice: document.getElementById('v_targetPrice').value,
-      vat: document.getElementById('v_vat').value,
-      productName: document.querySelector('.card:nth-child(2) .input-text').value,
-      qty: document.getElementById('v_qty').value,
-      laborUnit: document.getElementById('v_laborUnit').value,
-      transportBatch: document.getElementById('v_transportBatch').value,
-      discountInput: document.getElementById('v_discountInput').value,
-      materials: []
-    };
-    
-    matList.querySelectorAll('.mat-row').forEach(row => {
-      data.materials.push({
-        name: row.querySelector('.m-name-val').value,
-        norm: row.querySelector('.m-norm').value,
-        price: row.querySelector('.m-price').value
-      });
-    });
-    
-    localStorage.setItem('calc_tilda_data', JSON.stringify(data));
+  // ── расчёт ───────────────────────────────────────────────
+  const setPair = (idBatch, idUnit, valBatch, qty, negative) => {
+    const p = negative ? '- ' : '';
+    $(idBatch).textContent = p + fmt(valBatch);
+    $(idUnit).textContent = '(' + p + fmtUnit(valBatch / qty) + '/шт)';
   };
-
-  const loadFromStorage = () => {
-    const raw = localStorage.getItem('calc_tilda_data');
-    if (!raw) {
-      addMatRow();
-      return;
-    }
-    
-    try {
-      const data = JSON.parse(raw);
-      document.getElementById('v_costDirect').value = data.costDirect || '1.50';
-      document.getElementById('v_costOverhead').value = data.costOverhead || '1.00';
-      document.getElementById('v_profitMargin').value = data.profitMargin || '30';
-      document.getElementById('v_targetPrice').value = data.targetPrice || '';
-      document.getElementById('v_vat').value = data.vat || '22';
-      document.querySelector('.card:nth-child(2) .input-text').value = data.productName || '';
-      document.getElementById('v_qty').value = data.qty || '1000';
-      document.getElementById('v_laborUnit').value = data.laborUnit || '180';
-      document.getElementById('v_transportBatch').value = data.transportBatch || '5000';
-      document.getElementById('v_discountInput').value = data.discountInput || '0';
-      document.getElementById('v_discountSlider').value = data.discountInput || '0';
-
-      if (data.materials && data.materials.length > 0) {
-        data.materials.forEach(m => addMatRow(m.name, m.norm, m.price));
-      } else {
-        addMatRow();
-      }
-    } catch (e) {
-      addMatRow();
-    }
-  };
-
-  document.getElementById('btnReset').addEventListener('click', () => {
-    localStorage.removeItem('calc_tilda_data');
-    document.getElementById('v_costDirect').value = '1.50';
-    document.getElementById('v_costOverhead').value = '1.00';
-    document.getElementById('v_profitMargin').value = '30';
-    document.getElementById('v_targetPrice').value = '';
-    document.getElementById('v_vat').value = '22';
-    document.querySelector('.card:nth-child(2) .input-text').value = '';
-    document.getElementById('v_qty').value = '1000';
-    document.getElementById('v_laborUnit').value = '180';
-    document.getElementById('v_transportBatch').value = '5000';
-    document.getElementById('v_discountInput').value = '0';
-    document.getElementById('v_discountSlider').value = '0';
-    matList.innerHTML = '';
-    addMatRow();
-    calculate();
-  });
-
-  const dSlider = document.getElementById('v_discountSlider');
-  const dInput = document.getElementById('v_discountInput');
-  
-  dSlider.addEventListener('input', (e) => { dInput.value = e.target.value; calculate(); });
-  dInput.addEventListener('input', (e) => { dSlider.value = e.target.value; calculate(); });
 
   const calculate = () => {
-    const rawQty = getN('v_qty');
-    const qty = Math.max(1, rawQty); // защита от деления на ноль
-    const costDirect = getN('v_costDirect');
-    const costOverhead = getN('v_costOverhead');
-    const targetPriceUnit = getN('v_targetPrice');
-    const laborUnit = getN('v_laborUnit');
-    const transBatch = getN('v_transportBatch');
-    const profitMargin = getN('v_profitMargin') / 100;
+    const qty = Math.max(1, getN('v_qty'));
     const vatRate = getN('v_vat') / 100;
+    const markup = getN('v_profitMargin') / 100;
+    const targetUnit = getN('v_targetPrice');
     const discountRate = getN('v_discountInput') / 100;
 
-    let matCostUnit = 0;
-    matList.querySelectorAll('.mat-row').forEach(row => {
-      matCostUnit += getVal(row.querySelector('.m-norm')) * getVal(row.querySelector('.m-price'));
+    const r = rates || { fotRab: 0, fotTeh: 0, amort: 0, other: 0, opr: 0, ohr: 0, credit: 0 };
+    const perSecCommon = r.amort + r.other + r.opr;
+
+    // подготовка производства — ввод на весь заказ
+    let prepProd = 0, fotSum = 0, otherSum = 0;
+    prepList.querySelectorAll('.prep-row').forEach(row => {
+      const t = num(row.querySelector('.p-time')) * (TIME_UNITS[row.querySelector('.p-unit').value] || 1);
+      const fot = t * (row.querySelector('.p-who').value === 'teh' ? r.fotTeh : r.fotRab);
+      const mat = num(row.querySelector('.p-mat'));
+      fotSum += fot;
+      otherSum += t * r.other;
+      prepProd += fot + t * perSecCommon + mat;
     });
 
-    // расчет затрат на партию
-    const matBatch = matCostUnit * qty;
-    const laborDirectBatch = (laborUnit * costDirect) * qty;
-    const laborOverheadBatch = (laborUnit * costOverhead) * qty;
-    
-    // группировка прямых и полных затрат
-    const directCostBatch = matBatch + laborDirectBatch + transBatch;
-    const fullCostBatch = directCostBatch + laborOverheadBatch;
-    
-    let basePriceNoVat = 0;
-    let baseProfit = 0;
+    // оснастка — только стоимость, без производственных ставок
+    let toolProd = 0;
+    toolList.querySelectorAll('.tool-row').forEach(row => {
+      const c = num(row.querySelector('.t-cost'));
+      toolProd += row.querySelector('.t-base').value === 'unit' ? c * qty : c;
+    });
 
-    // логика таргета за штуку
-    if (targetPriceUnit > 0) {
-      basePriceNoVat = targetPriceUnit * qty;
-      baseProfit = basePriceNoVat - fullCostBatch;
+    // выпуск изделий — ввод в секундах на 1 шт
+    let mfgSecUnit = 0;
+    if (mfgMode === 'simple') {
+      mfgSecUnit = getN('v_laborUnit');
     } else {
-      baseProfit = fullCostBatch * profitMargin;
-      basePriceNoVat = fullCostBatch + baseProfit;
+      stageList.querySelectorAll('.stage-row').forEach(row => {
+        mfgSecUnit += num(row.querySelector('.s-time'));
+      });
     }
-    
-    // расчет скидки и финальных цен
+    const mfgSecBatch = mfgSecUnit * qty;
+    const mfgFot = mfgSecBatch * r.fotRab;
+    fotSum += mfgFot;
+    otherSum += mfgSecBatch * r.other;
+    const mfgProd = mfgFot + mfgSecBatch * perSecCommon;
+
+    // материалы и логистика
+    let matUnit = 0;
+    matList.querySelectorAll('.mat-row').forEach(row => {
+      matUnit += num(row.querySelector('.m-norm')) * num(row.querySelector('.m-price'));
+    });
+    const matProd = matUnit * qty;
+    const logProd = getN('v_transportBatch');
+
+    // производственная себестоимость
+    const prodCost = prepProd + toolProd + logProd + matProd + mfgProd;
+
+    // охр и кр — база без оснастки; % по кредитам — от всей производственной себестоимости
+    const ohrBase = prodCost - toolProd;
+    const ohrTotal = ohrBase * r.ohr;
+    const creditTotal = prodCost * r.credit;
+    const fullCost = prodCost + ohrTotal + creditTotal;
+
+    // разнесение накладных по блокам: сумма блоков = полной себестоимости
+    const shareOhr = (v) => ohrBase > 0 ? ohrTotal * (v / ohrBase) : 0;
+    const shareCr  = (v) => prodCost > 0 ? creditTotal * (v / prodCost) : 0;
+
+    const prepFull = prepProd + shareOhr(prepProd) + shareCr(prepProd);
+    const toolFull = toolProd + shareCr(toolProd);
+    const logFull  = logProd  + shareOhr(logProd)  + shareCr(logProd);
+    const matFull  = matProd  + shareOhr(matProd)  + shareCr(matProd);
+    const mfgFull  = mfgProd  + shareOhr(mfgProd)  + shareCr(mfgProd);
+
+    const onceTotal = prepFull + toolFull + logFull;
+    const serialTotal = matFull + mfgFull;
+
+    // цена
+    let basePriceNoVat, baseProfit;
+    if (targetUnit > 0) {
+      basePriceNoVat = targetUnit * qty;
+      baseProfit = basePriceNoVat - fullCost;
+    } else {
+      baseProfit = fullCost * markup;
+      basePriceNoVat = fullCost + baseProfit;
+    }
     const discountAmount = basePriceNoVat * discountRate;
     const finalPriceNoVat = basePriceNoVat - discountAmount;
-    
-    const finalProfit = finalPriceNoVat - fullCostBatch;
+    const finalProfit = finalPriceNoVat - fullCost;
     const finalPriceVat = finalPriceNoVat * (1 + vatRate);
 
-    // расчет маржи (по прямым затратам)
-    let marginPercent = 0;
-    if (finalPriceNoVat > 0) {
-      marginPercent = ((finalPriceNoVat - directCostBatch) / finalPriceNoVat) * 100;
-    }
+    // маржинальность по переменным затратам (как в шаблоне)
+    const variableCost = matProd + toolProd + fotSum + otherSum;
+    const marginPct = finalPriceNoVat > 0 ? ((finalPriceNoVat - variableCost) / finalPriceNoVat) * 100 : 0;
+    const roiPct = fullCost > 0 ? (finalProfit / fullCost) * 100 : 0;
 
-    // функция обновления пары (партия + штука)
-    const updatePair = (idBatch, idUnit, valBatch, isNegative = false) => {
-      const elBatch = document.getElementById(idBatch);
-      const elUnit = document.getElementById(idUnit);
-      
-      const prefix = isNegative ? '- ' : '';
-      elBatch.textContent = prefix + fmt(valBatch);
-      elUnit.textContent = '(' + prefix + fmt(valBatch / qty) + '/шт)';
-    };
+    setPair('out_onceBatch', 'out_onceUnit', onceTotal, qty);
+    setPair('out_prepBatch', 'out_prepUnit', prepFull, qty);
+    setPair('out_toolBatch', 'out_toolUnit', toolFull, qty);
+    setPair('out_logBatch', 'out_logUnit', logFull, qty);
+    setPair('out_serialBatch', 'out_serialUnit', serialTotal, qty);
+    setPair('out_matBatch', 'out_matUnit', matFull, qty);
+    setPair('out_mfgBatch', 'out_mfgUnit', mfgFull, qty);
+    setPair('out_fullCostBatch', 'out_fullCostUnit', fullCost, qty);
+    setPair('out_basePriceNoVat', 'out_basePriceNoVatUnit', basePriceNoVat, qty);
+    setPair('out_baseProfit', 'out_baseProfitUnit', baseProfit, qty);
+    setPair('out_discountAmount', 'out_discountUnit', discountAmount, qty, true);
+    setPair('out_finalProfit', 'out_finalProfitUnit', finalProfit, qty);
+    setPair('out_finalPriceVat', 'out_finalPriceVatUnit', finalPriceVat, qty);
 
-    // обновление dom
-    updatePair('out_matBatch', 'out_matUnit', matBatch);
-    updatePair('out_laborDirectBatch', 'out_laborDirectUnit', laborDirectBatch);
-    updatePair('out_transBatch', 'out_transUnit', transBatch);
-    updatePair('out_directCostBatch', 'out_directCostUnit', directCostBatch);
-    updatePair('out_laborOverheadBatch', 'out_laborOverheadUnit', laborOverheadBatch);
-    updatePair('out_fullCostBatch', 'out_fullCostUnit', fullCostBatch);
-    
-    updatePair('out_baseProfit', 'out_baseProfitUnit', baseProfit);
-    updatePair('out_basePriceNoVat', 'out_basePriceNoVatUnit', basePriceNoVat);
-    
-    updatePair('out_discountAmount', 'out_discountUnit', discountAmount, true);
-    updatePair('out_finalProfit', 'out_finalProfitUnit', finalProfit);
-    updatePair('out_finalPriceVat', 'out_finalPriceVatUnit', finalPriceVat);
-    
-    // стилизация прибыли
-    const elFinalProfit = document.getElementById('out_finalProfit').parentElement;
-    if (finalProfit < 0) {
-      elFinalProfit.classList.add('text-danger');
-      elFinalProfit.classList.remove('text-success');
-    } else {
-      elFinalProfit.classList.remove('text-danger');
-      elFinalProfit.classList.add('text-success');
-    }
+    const profitBox = $('out_finalProfit').parentElement;
+    profitBox.classList.toggle('text-danger', finalProfit < 0);
+    profitBox.classList.toggle('text-success', finalProfit >= 0);
 
-    // стилизация маржи
-    const elMargin = document.getElementById('out_marginPercent');
-    elMargin.textContent = fmtPct(marginPercent);
-    if (marginPercent < 0) {
-      elMargin.classList.add('text-danger');
-      elMargin.classList.remove('text-success');
-    } else {
-      elMargin.classList.remove('text-danger');
-      elMargin.classList.add('text-success');
-    }
-    
-    saveToStorage();
+    const elMargin = $('out_marginPercent');
+    elMargin.textContent = fmtPct(marginPct);
+    elMargin.classList.toggle('text-danger', marginPct < 0);
+    elMargin.classList.toggle('text-success', marginPct >= 0);
+
+    const elRoi = $('out_roiPercent');
+    elRoi.textContent = fmtPct(roiPct);
+    elRoi.classList.toggle('text-danger', roiPct < 0);
+    elRoi.classList.toggle('text-success', roiPct >= 0);
+
+    $('alertTarget').classList.toggle('show', rates !== null && fullCost > 0 && finalProfit < 0);
+
+    saveData();
   };
 
-  document.getElementById('btnMat').addEventListener('click', () => {
+  // ── сохранение ───────────────────────────────────────────
+  const saveData = () => {
+    const data = {
+      product: $('v_product').value,
+      qty: $('v_qty').value,
+      profitMargin: $('v_profitMargin').value,
+      targetPrice: $('v_targetPrice').value,
+      vat: $('v_vat').value,
+      transportBatch: $('v_transportBatch').value,
+      laborUnit: $('v_laborUnit').value,
+      discount: $('v_discountInput').value,
+      mfgMode: mfgMode,
+      prep: [], tools: [], stages: [], materials: []
+    };
+    prepList.querySelectorAll('.prep-row').forEach(row => data.prep.push({
+      name: row.querySelector('.p-name').value,
+      who: row.querySelector('.p-who').value,
+      time: row.querySelector('.p-time').value,
+      unit: row.querySelector('.p-unit').value,
+      mat: row.querySelector('.p-mat').value
+    }));
+    toolList.querySelectorAll('.tool-row').forEach(row => data.tools.push({
+      name: row.querySelector('.t-name').value,
+      cost: row.querySelector('.t-cost').value,
+      base: row.querySelector('.t-base').value
+    }));
+    stageList.querySelectorAll('.stage-row').forEach(row => data.stages.push({
+      name: row.querySelector('.s-name').value,
+      time: row.querySelector('.s-time').value
+    }));
+    matList.querySelectorAll('.mat-row').forEach(row => data.materials.push({
+      name: row.querySelector('.m-name').value,
+      norm: row.querySelector('.m-norm').value,
+      price: row.querySelector('.m-price').value
+    }));
+    try { localStorage.setItem(STORE_DATA, JSON.stringify(data)); } catch (e) {}
+  };
+
+  const setMfgMode = (mode) => {
+    mfgMode = mode;
+    $('mfgSimple').style.display = mode === 'simple' ? '' : 'none';
+    $('mfgStages').style.display = mode === 'stages' ? '' : 'none';
+    $('mfgToggle').querySelectorAll('button').forEach(b => {
+      b.classList.toggle('is-on', b.dataset.mode === mode);
+    });
+  };
+
+  const blankForm = () => {
+    prepList.innerHTML = ''; toolList.innerHTML = '';
+    stageList.innerHTML = ''; matList.innerHTML = '';
+    addPrepRow({ name: 'подготовка производства', who: 'teh', unit: 'ч' });
+    addToolRow();
+    addStageRow({ name: 'SMT' });
     addMatRow();
+    setMfgMode('simple');
+  };
+
+  const loadData = () => {
+    let data = null;
+    try { data = JSON.parse(localStorage.getItem(STORE_DATA) || 'null'); } catch (e) {}
+    if (!data) { blankForm(); return; }
+
+    $('v_product').value = data.product || '';
+    $('v_qty').value = data.qty || '1000';
+    $('v_profitMargin').value = data.profitMargin || '30';
+    $('v_targetPrice').value = data.targetPrice || '';
+    $('v_vat').value = data.vat || '22';
+    $('v_transportBatch').value = data.transportBatch || '0';
+    $('v_laborUnit').value = data.laborUnit || '0';
+    $('v_discountInput').value = data.discount || '0';
+    $('v_discountSlider').value = data.discount || '0';
+
+    (data.prep || []).forEach(addPrepRow);
+    (data.tools || []).forEach(addToolRow);
+    (data.stages || []).forEach(addStageRow);
+    (data.materials || []).forEach(addMatRow);
+
+    if (!prepList.children.length) addPrepRow({ name: 'подготовка производства', who: 'teh', unit: 'ч' });
+    if (!toolList.children.length) addToolRow();
+    if (!stageList.children.length) addStageRow({ name: 'SMT' });
+    if (!matList.children.length) addMatRow();
+
+    setMfgMode(data.mfgMode === 'stages' ? 'stages' : 'simple');
+  };
+
+  // ── события ──────────────────────────────────────────────
+  $('btnPrep').addEventListener('click', () => { addPrepRow(); calculate(); });
+  $('btnTool').addEventListener('click', () => { addToolRow(); calculate(); });
+  $('btnStage').addEventListener('click', () => { addStageRow(); calculate(); });
+  $('btnMat').addEventListener('click', () => { addMatRow(); calculate(); });
+
+  app.addEventListener('click', (e) => {
+    if (e.target.classList.contains('row-del')) {
+      e.target.closest('.row-line').remove();
+      calculate();
+      return;
+    }
+    const grp = e.target.closest('[data-toggle]');
+    if (grp) $(grp.dataset.toggle).classList.toggle('open');
+  });
+
+  $('mfgToggle').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    setMfgMode(b.dataset.mode);
     calculate();
   });
 
-  matList.addEventListener('click', (e) => {
-    if (e.target.classList.contains('m-del')) {
-      e.target.closest('.mat-row').remove();
+  const dSlider = $('v_discountSlider'), dInput = $('v_discountInput');
+  dSlider.addEventListener('input', () => { dInput.value = dSlider.value; calculate(); });
+  dInput.addEventListener('input', () => { dSlider.value = dInput.value; calculate(); });
+
+  app.addEventListener('input', (e) => {
+    if (e.target.classList.contains('trig')) calculate();
+    else if (e.target.classList.contains('txt')) saveData();
+  });
+  app.addEventListener('change', (e) => {
+    if (e.target.classList.contains('trig')) calculate();
+  });
+
+  $('btnPrint').addEventListener('click', () => window.print());
+
+  $('btnReset').addEventListener('click', () => {
+    if (!confirm('Очистить все введённые данные расчёта? Тарифы сохранятся.')) return;
+    localStorage.removeItem(STORE_DATA);
+    $('v_product').value = '';
+    $('v_qty').value = '1000';
+    $('v_profitMargin').value = '30';
+    $('v_targetPrice').value = '';
+    $('v_vat').value = '22';
+    $('v_transportBatch').value = '0';
+    $('v_laborUnit').value = '0';
+    $('v_discountInput').value = '0';
+    $('v_discountSlider').value = '0';
+    blankForm();
+    calculate();
+  });
+
+  // ── окно тарифов ─────────────────────────────────────────
+  const modal = $('ratesModal');
+  const openModal = () => { modal.classList.add('show'); $('keyMsg').textContent = ''; };
+  const closeModal = () => {
+    modal.classList.remove('show');
+    $('masterZone').classList.remove('show');
+    $('ratesEditor').style.display = 'none';
+    $('pwdField').style.display = '';
+    $('masterPwd').value = '';
+    $('pwdMsg').textContent = '';
+  };
+
+  $('btnRates').addEventListener('click', openModal);
+  $('btnKeyClose').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+  $('btnKeyApply').addEventListener('click', () => {
+    const msg = $('keyMsg');
+    try {
+      const r = unpackRates($('keyInput').value);
+      localStorage.setItem(STORE_RATES, $('keyInput').value.trim());
+      setRates(r);
       calculate();
+      msg.textContent = 'Код принят: тарифы ' + (r.label || '') + '.';
+      msg.className = 'muted text-success';
+      setTimeout(closeModal, 900);
+    } catch (err) {
+      msg.textContent = 'Ошибка: ' + err.message + '. Проверьте, что код скопирован целиком.';
+      msg.className = 'muted text-danger';
     }
   });
 
-  calc.addEventListener('input', (e) => {
-    if (e.target.classList.contains('trig') || e.target.classList.contains('m-name-val')) {
-      calculate();
-    } else if (e.target.tagName.toLowerCase() === 'input' && e.target.type === 'text') {
-      saveToStorage();
+  $('btnMaster').addEventListener('click', () => $('masterZone').classList.toggle('show'));
+
+  const sha = async (s) => {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  const fillEditor = (r) => {
+    $('r_fotRab').value = r.fotRab; $('r_fotTeh').value = r.fotTeh;
+    $('r_amort').value = r.amort;   $('r_other').value = r.other;
+    $('r_opr').value = r.opr;       $('r_ohr').value = r.ohr;
+    $('r_credit').value = r.credit; $('r_label').value = r.label || '';
+  };
+
+  $('btnPwdOk').addEventListener('click', async () => {
+    const h = await sha($('masterPwd').value);
+    if (h !== MASTER_HASH) {
+      $('pwdMsg').textContent = 'Неверный пароль.';
+      $('pwdMsg').className = 'muted text-danger';
+      return;
     }
+    $('pwdField').style.display = 'none';
+    $('ratesEditor').style.display = '';
+    fillEditor(rates || DEFAULT_RATES);
+  });
+  $('masterPwd').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnPwdOk').click(); });
+
+  $('btnKeyGen').addEventListener('click', () => {
+    const r = {
+      fotRab: getN('r_fotRab'), fotTeh: getN('r_fotTeh'), amort: getN('r_amort'),
+      other: getN('r_other'), opr: getN('r_opr'), ohr: getN('r_ohr'),
+      credit: getN('r_credit'), label: $('r_label').value.trim()
+    };
+    const key = packRates(r);
+    $('keyOutput').value = key;
+    $('keyOutput').select();
+    localStorage.setItem(STORE_RATES, key);
+    setRates(r);
+    calculate();
   });
 
-  loadFromStorage();
+  // ── старт ────────────────────────────────────────────────
+  const savedKey = localStorage.getItem(STORE_RATES);
+  if (savedKey) {
+    try { setRates(unpackRates(savedKey)); } catch (e) { setRates(null); }
+  } else {
+    setRates(null);
+  }
+
+  loadData();
   calculate();
 });
 </script>
