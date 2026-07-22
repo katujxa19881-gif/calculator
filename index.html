@@ -466,7 +466,7 @@
 
         <div class="d-group open" id="grpPrep">
           <div class="d-row" data-toggle="grpPrep" style="cursor:pointer">
-            <span><span class="caret">▼</span>подготовка производства<span class="u-note">разовая, на партию не делится</span></span>
+            <span><span class="caret">▼</span>полная себестоимость подготовки<span class="u-note">разовая, на партию не делится</span></span>
             <div class="d-val">
               <span id="out_costPrepBatch">0 ₽</span>
             </div>
@@ -480,20 +480,16 @@
               <span>материалы подготовки</span>
               <div class="d-val"><span id="out_prepMatBatch">0 ₽</span></div>
             </div>
-            <div class="d-row d-sub">
+            <div class="d-row d-sub" style="margin-bottom:0">
               <span>оснастка на подготовку</span>
               <div class="d-val"><span id="out_toolPrepBatch">0 ₽</span></div>
-            </div>
-            <div class="d-row d-sub" style="margin-bottom:0">
-              <span>накладные расходы</span>
-              <div class="d-val"><span id="out_ovhPrepBatch">0 ₽</span></div>
             </div>
           </div>
         </div>
 
         <div class="d-group open" id="grpSerial">
           <div class="d-row" data-toggle="grpSerial" style="cursor:pointer">
-            <span><span class="caret">▼</span>серийный выпуск</span>
+            <span><span class="caret">▼</span>полная себестоимость серии</span>
             <div class="d-val">
               <span id="out_costSerBatch">0 ₽</span>
               <span id="out_costSerUnit" class="u-val">(0 ₽/шт)</span>
@@ -512,19 +508,15 @@
               <span>логистика</span>
               <div class="d-val"><span id="out_logBatch">0 ₽</span><span id="out_logUnit" class="u-val">(0 ₽/шт)</span></div>
             </div>
-            <div class="d-row d-sub">
+            <div class="d-row d-sub" style="margin-bottom:0">
               <span>оснастка на серию</span>
               <div class="d-val"><span id="out_toolSerBatch">0 ₽</span><span id="out_toolSerUnit" class="u-val">(0 ₽/шт)</span></div>
-            </div>
-            <div class="d-row d-sub" style="margin-bottom:0">
-              <span>накладные расходы</span>
-              <div class="d-val"><span id="out_ovhSerBatch">0 ₽</span><span id="out_ovhSerUnit" class="u-val">(0 ₽/шт)</span></div>
             </div>
           </div>
         </div>
 
         <div class="d-row d-total">
-          <span>полная себестоимость:</span>
+          <span>итого себестоимость проекта:</span>
           <div class="d-val">
             <span id="out_fullCostBatch">0 ₽</span>
           </div>
@@ -966,7 +958,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareOhr = (v) => ohrBase > 0 ? ohrTotal * (v / ohrBase) : 0;
     const shareCr  = (v) => prodCost > 0 ? creditTotal * (v / prodCost) : 0;
 
-    // накладные показываются отдельной строкой, внутрь статей не подмешиваются
+    // накладные не показываются отдельной строкой: они сидят в работах
+    // подготовки и в выпуске изделий. материалы, оснастка и логистика
+    // остаются чистыми — их суммы должны биться с накладными поставщиков
     const ovhPrep = shareOhr(prepProd) + shareCr(prepProd) + shareCr(toolPrepProd);
     const ovhSer  = shareOhr(matProd + mfgProd + logProd)
                   + shareCr(matProd + mfgProd + logProd + toolSerProd);
@@ -998,16 +992,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const roiPct = fullCost > 0 ? (finalProfit / fullCost) * 100 : 0;
 
     setPair('out_costPrepBatch', null, costPrep, qty);
-    setPair('out_prepWorkBatch', null, prepWorkProd, qty);
+    setPair('out_prepWorkBatch', null, prepWorkProd + ovhPrep, qty);
     setPair('out_prepMatBatch', null, prepMatProd, qty);
     setPair('out_toolPrepBatch', null, toolPrepProd, qty);
-    setPair('out_ovhPrepBatch', null, ovhPrep, qty);
     setPair('out_costSerBatch', 'out_costSerUnit', costSer, qty);
     setPair('out_matBatch', 'out_matUnit', matProd, qty);
-    setPair('out_mfgBatch', 'out_mfgUnit', mfgProd, qty);
+    setPair('out_mfgBatch', 'out_mfgUnit', mfgProd + ovhSer, qty);
     setPair('out_logBatch', 'out_logUnit', logProd, qty);
     setPair('out_toolSerBatch', 'out_toolSerUnit', toolSerProd, qty);
-    setPair('out_ovhSerBatch', 'out_ovhSerUnit', ovhSer, qty);
     setPair('out_fullCostBatch', null, fullCost, qty);
 
     setPair('out_pricePrep', null, offerPrep.price, qty);
