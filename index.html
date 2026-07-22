@@ -224,6 +224,14 @@
   .d-row > span:first-child { color: var(--c-text-muted); text-transform: lowercase; }
   .d-val { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
   .u-val { font-size: 0.85em; color: var(--c-text-muted); font-weight: 400; margin-left: 6px; white-space: nowrap; }
+  .u-note {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--c-text-muted);
+    text-transform: none;
+    margin-top: 2px;
+  }
   .d-divider { height: 1px; background: var(--c-border-light); margin: 16px 0; }
   .d-total { font-size: 1.1rem; }
   .d-sub { padding-left: 14px; font-size: 0.88rem; border-left: 2px solid var(--c-border-light); }
@@ -391,7 +399,7 @@
       <div class="card">
         <div class="card-head">
           <h3>подготовка производства
-            <span class="hint-note">время и материалы указываются на весь заказ — калькулятор сам разнесёт их на партию</span>
+            <span class="hint-note">разовые работы: время и материалы указываются полностью, на партию не делятся — подготовку делают один раз, независимо от тиража серии</span>
           </h3>
           <button type="button" id="btnPrep" class="btn-quiet no-print">+ строка</button>
         </div>
@@ -458,20 +466,19 @@
 
         <div class="d-group open" id="grpPrep">
           <div class="d-row" data-toggle="grpPrep" style="cursor:pointer">
-            <span><span class="caret">▼</span>подготовка производства</span>
+            <span><span class="caret">▼</span>подготовка производства<span class="u-note">разовая, на партию не делится</span></span>
             <div class="d-val">
               <span id="out_costPrepBatch">0 ₽</span>
-              <span id="out_costPrepUnit" class="u-val">(0 ₽/шт)</span>
             </div>
           </div>
           <div class="d-body">
             <div class="d-row d-sub">
               <span>работы и материалы подготовки</span>
-              <div class="d-val"><span id="out_prepBatch">0 ₽</span><span id="out_prepUnit" class="u-val">(0 ₽/шт)</span></div>
+              <div class="d-val"><span id="out_prepBatch">0 ₽</span></div>
             </div>
             <div class="d-row d-sub" style="margin-bottom:0">
               <span>оснастка на подготовку</span>
-              <div class="d-val"><span id="out_toolPrepBatch">0 ₽</span><span id="out_toolPrepUnit" class="u-val">(0 ₽/шт)</span></div>
+              <div class="d-val"><span id="out_toolPrepBatch">0 ₽</span></div>
             </div>
           </div>
         </div>
@@ -508,7 +515,6 @@
           <span>полная себестоимость:</span>
           <div class="d-val">
             <span id="out_fullCostBatch">0 ₽</span>
-            <span id="out_fullCostUnit" class="u-val" style="font-weight:400">(0 ₽/шт)</span>
           </div>
         </div>
 
@@ -517,7 +523,7 @@
         <h3 style="margin-bottom:16px">коммерческое предложение</h3>
 
         <div class="offer-block">
-          <div class="offer-title">подготовка производства</div>
+          <div class="offer-title">подготовка производства<span class="u-note">разовая цена за работу, независимо от тиража серии</span></div>
           <div class="grid-3">
             <div class="field-group">
               <label>наценка (%)</label>
@@ -534,11 +540,11 @@
           </div>
           <div class="d-row">
             <span>цена без ндс:</span>
-            <div class="d-val"><span id="out_pricePrep">0 ₽</span><span id="out_pricePrepUnit" class="u-val">(0 ₽/шт)</span></div>
+            <div class="d-val"><span id="out_pricePrep">0 ₽</span></div>
           </div>
           <div class="d-row">
             <span>прибыль:</span>
-            <div class="d-val"><span id="out_profitPrep">0 ₽</span><span id="out_profitPrepUnit" class="u-val">(0 ₽/шт)</span></div>
+            <div class="d-val"><span id="out_profitPrep">0 ₽</span></div>
           </div>
           <div class="d-row" style="margin-bottom:0; font-weight:600">
             <span style="color: var(--c-text-main)">цена с ндс:</span>
@@ -582,7 +588,7 @@
         <div class="d-highlight">
           <div class="d-row">
             <span>прибыль по проекту:</span>
-            <div class="d-val"><span id="out_finalProfit">0 ₽</span><span id="out_finalProfitUnit" class="u-val" style="color:inherit">(0 ₽/шт)</span></div>
+            <div class="d-val"><span id="out_finalProfit">0 ₽</span></div>
           </div>
           <div class="d-row">
             <span>маржинальность:</span>
@@ -597,7 +603,6 @@
             <span>итого заказчику (с ндс):</span>
             <div class="d-val">
               <span id="out_finalPriceVat">0 ₽</span>
-              <span id="out_finalPriceVatUnit" class="u-val" style="font-weight:400; color:inherit">(0 ₽/шт)</span>
             </div>
           </div>
         </div>
@@ -874,10 +879,13 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ── расчёт ───────────────────────────────────────────────
+  // idUnit может отсутствовать: для подготовки производства и итогов
+  // деление на партию не имеет смысла — подготовка делается один раз
   const setPair = (idBatch, idUnit, valBatch, qty, negative) => {
     const p = negative ? '- ' : '';
     $(idBatch).textContent = p + fmt(valBatch);
-    $(idUnit).textContent = '(' + p + fmtUnit(valBatch / qty) + '/шт)';
+    const elUnit = idUnit && $(idUnit);
+    if (elUnit) elUnit.textContent = '(' + p + fmtUnit(valBatch / qty) + '/шт)';
   };
 
   const calculate = () => {
@@ -978,26 +986,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const marginPct = finalPriceNoVat > 0 ? ((finalPriceNoVat - variableCost) / finalPriceNoVat) * 100 : 0;
     const roiPct = fullCost > 0 ? (finalProfit / fullCost) * 100 : 0;
 
-    setPair('out_costPrepBatch', 'out_costPrepUnit', costPrep, qty);
-    setPair('out_prepBatch', 'out_prepUnit', prepFull, qty);
-    setPair('out_toolPrepBatch', 'out_toolPrepUnit', toolPrepFull, qty);
+    setPair('out_costPrepBatch', null, costPrep, qty);
+    setPair('out_prepBatch', null, prepFull, qty);
+    setPair('out_toolPrepBatch', null, toolPrepFull, qty);
     setPair('out_costSerBatch', 'out_costSerUnit', costSer, qty);
     setPair('out_matBatch', 'out_matUnit', matFull, qty);
     setPair('out_mfgBatch', 'out_mfgUnit', mfgFull, qty);
     setPair('out_logBatch', 'out_logUnit', logFull, qty);
     setPair('out_toolSerBatch', 'out_toolSerUnit', toolSerFull, qty);
-    setPair('out_fullCostBatch', 'out_fullCostUnit', fullCost, qty);
+    setPair('out_fullCostBatch', null, fullCost, qty);
 
-    setPair('out_pricePrep', 'out_pricePrepUnit', offerPrep.price, qty);
-    setPair('out_profitPrep', 'out_profitPrepUnit', offerPrep.profit, qty);
+    setPair('out_pricePrep', null, offerPrep.price, qty);
+    setPair('out_profitPrep', null, offerPrep.profit, qty);
     $('out_priceVatPrep').textContent = fmt(offerPrep.vat);
 
     setPair('out_priceSer', 'out_priceSerUnit', offerSer.price, qty);
     setPair('out_profitSer', 'out_profitSerUnit', offerSer.profit, qty);
     setPair('out_priceVatSer', 'out_priceVatSerUnit', offerSer.vat, qty);
 
-    setPair('out_finalProfit', 'out_finalProfitUnit', finalProfit, qty);
-    setPair('out_finalPriceVat', 'out_finalPriceVatUnit', finalPriceVat, qty);
+    setPair('out_finalProfit', null, finalProfit, qty);
+    setPair('out_finalPriceVat', null, finalPriceVat, qty);
 
     [['out_profitPrep', offerPrep.profit], ['out_profitSer', offerSer.profit]].forEach(p => {
       const box = $(p[0]).parentElement;
