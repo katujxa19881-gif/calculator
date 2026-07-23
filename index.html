@@ -636,8 +636,8 @@
 
     <div class="master-zone" id="masterZone">
       <div class="field-group" id="pwdField">
-        <label>пароль</label>
-        <input type="password" id="masterPwd" class="input-text" placeholder="••••••">
+        <label>пароль (латиницей)</label>
+        <input type="password" id="masterPwd" class="input-text" placeholder="••••••" autocapitalize="off" autocorrect="off" spellcheck="false">
         <div id="pwdMsg" class="muted" style="margin-top:8px"></div>
         <button type="button" id="btnPwdOk" class="btn" style="margin-top:12px; width:100%">войти</button>
       </div>
@@ -690,8 +690,12 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   // срок годности тарифов, дней
   const RATES_MAX_AGE = 183;
-  // sha-256 пароля служебного режима (по умолчанию: цтс-2026)
-  const MASTER_HASH = '91ea4e668a3f32fece593d08de0cf9334418fcc8913d2b530da70d9d40e8bd46';
+  // sha-256 паролей служебного режима: основной латиницей (cts-kalk-2026),
+  // второй — прежний кириллический, чтобы старая записка не перестала работать
+  const MASTER_HASHES = [
+    'b5bac6359fb7078ae25a4a440f221a0d78f32b05606a570b6c9cbf6483584574',
+    '91ea4e668a3f32fece593d08de0cf9334418fcc8913d2b530da70d9d40e8bd46'
+  ];
 
   const STORE_DATA = 'calc_cts_data_v2';
   const STORE_RATES = 'calc_cts_rates_v2';
@@ -1244,8 +1248,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   $('btnPwdOk').addEventListener('click', async () => {
-    const h = await sha($('masterPwd').value);
-    if (h !== MASTER_HASH) {
+    const h = await sha($('masterPwd').value.trim());
+    if (MASTER_HASHES.indexOf(h) === -1) {
       $('pwdMsg').textContent = 'Неверный пароль.';
       $('pwdMsg').className = 'muted text-danger';
       return;
