@@ -644,6 +644,13 @@
 
       <div id="ratesEditor" style="display:none">
         <p class="muted">Значения соответствуют листу «Константы_и_ставки». После правки нажмите «сгенерировать код» и отправьте строку коллегам.</p>
+
+        <div class="field-group" style="margin-top:16px">
+          <label>вставить из excel — скопируйте диапазон b14:b20 листа «константы_и_ставки»</label>
+          <textarea id="pasteRates" class="key-box" style="min-height:64px" placeholder="0,12345&#10;0,22300&#10;..."></textarea>
+          <div id="pasteMsg" class="muted" style="margin-top:8px"></div>
+          <button type="button" id="btnPasteRates" class="btn-quiet" style="margin-top:8px">заполнить поля</button>
+        </div>
         <div class="grid-2" style="margin-top:16px">
           <div class="field-group"><label>ставка фот рабочих (₽/сек)</label><input type="number" id="r_fotRab" class="input-text" step="0.000001"></div>
           <div class="field-group"><label>ставка фот технологов (₽/сек)</label><input type="number" id="r_fotTeh" class="input-text" step="0.000001"></div>
@@ -1248,6 +1255,31 @@ document.addEventListener('DOMContentLoaded', () => {
     fillEditor(rates || DEFAULT_RATES);
   });
   $('masterPwd').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnPwdOk').click(); });
+
+  // разбор диапазона B14:B20, скопированного из Excel
+  $('btnPasteRates').addEventListener('click', () => {
+    const msg = $('pasteMsg');
+    const nums = ($('pasteRates').value.match(/-?\d+(?:[.,]\d+)?(?:[eE][-+]?\d+)?/g) || [])
+      .map(s => parseFloat(s.replace(',', '.')))
+      .filter(n => !isNaN(n));
+
+    if (nums.length < 7) {
+      msg.textContent = 'Нашла только ' + nums.length + ' чисел. Нужно 7: скопируйте диапазон B14:B20 целиком.';
+      msg.className = 'muted text-danger';
+      return;
+    }
+    if (nums.length > 7) {
+      msg.textContent = 'Нашла ' + nums.length + ' чисел вместо 7. Скопируйте ровно диапазон B14:B20, без заголовков и пояснений.';
+      msg.className = 'muted text-danger';
+      return;
+    }
+
+    ['r_fotRab', 'r_fotTeh', 'r_amort', 'r_other', 'r_opr', 'r_ohr', 'r_credit']
+      .forEach((id, i) => { $(id).value = nums[i]; });
+    $('r_date').value = new Date().toISOString().slice(0, 10);
+    msg.textContent = 'Готово: 7 ставок заполнены. Проверьте значения и нажмите «сгенерировать код и ссылку».';
+    msg.className = 'muted text-success';
+  });
 
   $('btnKeyGen').addEventListener('click', () => {
     const r = {
