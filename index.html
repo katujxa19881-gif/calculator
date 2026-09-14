@@ -443,6 +443,12 @@
           </h3>
           <button type="button" id="btnMat" class="btn-quiet no-print">+ строка</button>
         </div>
+        <div class="grid-2 no-print" style="margin-bottom:10px">
+          <select id="matProfile" class="input-text" style="display:none"></select>
+          <button type="button" id="btnMatProfile" class="btn btn-outline" style="display:none">подставить типовой набор</button>
+        </div>
+        <p class="muted" id="matHelp" style="display:none; margin:0 0 10px">Материал — из списка (цена подставится сама). Или выберите типовой набор похожего изделия и поправьте нормы.</p>
+        <datalist id="matCatalog"></datalist>
         <div id="matList"></div>
       </div>
 
@@ -643,10 +649,10 @@
       </div>
 
       <div id="ratesEditor" style="display:none">
-        <p class="muted">Значения соответствуют листу «Константы_и_ставки». После правки нажмите «сгенерировать код» и отправьте строку коллегам.</p>
+        <p class="muted">Значения приходят из мастер-книги бюджета, лист «Тарифы калькулятора». После правки нажмите «сгенерировать код и ссылку» и отправьте ссылку коллегам.</p>
 
         <div class="field-group" style="margin-top:16px">
-          <label>вставить из excel — скопируйте диапазон b14:b20 листа «константы_и_ставки»</label>
+          <label>вставить из excel — скопируйте зелёные ячейки b5:b11 листа «тарифы калькулятора» (можно вместе со строками целиком)</label>
           <textarea id="pasteRates" class="key-box" style="min-height:64px" placeholder="0,12345&#10;0,22300&#10;..."></textarea>
           <div id="pasteMsg" class="muted" style="margin-top:8px"></div>
           <button type="button" id="btnPasteRates" class="btn-quiet" style="margin-top:8px">заполнить поля</button>
@@ -662,6 +668,16 @@
           <div class="field-group"><label>метка версии</label><input type="text" id="r_label" class="input-text" placeholder="2026"></div>
           <div class="field-group"><label>дата тарифов</label><input type="date" id="r_date" class="input-text"></div>
           <div class="field-group"><label>адрес калькулятора</label><input type="text" id="r_url" class="input-text" placeholder="https://..."></div>
+        </div>
+        <div class="field-group" style="margin-top:16px">
+          <label>справочник материалов — скопируйте из мастер-книги три колонки: материал, ед., цена</label>
+          <textarea id="pasteCatalog" class="key-box" style="min-height:64px" placeholder="Паяльная паста SAC305&#9;кг&#9;9800&#10;..."></textarea>
+          <div id="catalogMsg" class="muted" style="margin-top:8px"></div>
+        </div>
+        <div class="field-group">
+          <label>типовые наборы — три колонки: изделие, материал, норма на 1 шт</label>
+          <textarea id="pasteProfiles" class="key-box" style="min-height:64px" placeholder="МП-100&#9;Паяльная паста SAC305&#9;0,039&#10;..."></textarea>
+          <div id="profilesMsg" class="muted" style="margin-top:8px"></div>
         </div>
         <button type="button" id="btnKeyGen" class="btn" style="width:100%">сгенерировать код и ссылку</button>
         <div class="field-group" style="margin-top:16px">
@@ -693,8 +709,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // sha-256 паролей служебного режима: основной латиницей (cts-kalk-2026),
   // второй — прежний кириллический, чтобы старая записка не перестала работать
   const MASTER_HASHES = [
-    'b5bac6359fb7078ae25a4a440f221a0d78f32b05606a570b6c9cbf6483584574',
-    '91ea4e668a3f32fece593d08de0cf9334418fcc8913d2b530da70d9d40e8bd46'
+    '752e5aa916daf11aa5829fe48d721276c8f0b6383974a622840edbfbb512c9ac'  // пароль служебного режима: tarif
   ];
 
   const STORE_DATA = 'calc_cts_data_v2';
@@ -735,7 +750,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const packRates = (r) => {
-    const arr = [r.fotRab, r.fotTeh, r.amort, r.other, r.opr, r.ohr, r.credit, r.label, r.date || ''];
+    const arr = [r.fotRab, r.fotTeh, r.amort, r.other, r.opr, r.ohr, r.credit, r.label, r.date || '',
+                 r.catalog || [], r.profiles || []];
     const body = btoa(unescape(encodeURIComponent(JSON.stringify(arr))));
     return 'CTS1-' + body + '-' + crc(body);
   };
@@ -749,7 +765,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!Array.isArray(a) || a.length < 7) throw new Error('код неполный');
     return {
       fotRab: +a[0], fotTeh: +a[1], amort: +a[2], other: +a[3],
-      opr: +a[4], ohr: +a[5], credit: +a[6], label: a[7] || '', date: a[8] || ''
+      opr: +a[4], ohr: +a[5], credit: +a[6], label: a[7] || '', date: a[8] || '',
+      catalog: Array.isArray(a[9]) ? a[9] : [], profiles: Array.isArray(a[10]) ? a[10] : []
     };
   };
 
@@ -765,8 +782,31 @@ document.addEventListener('DOMContentLoaded', () => {
     return isNaN(d) ? null : Math.floor((Date.now() - d.getTime()) / 86400000);
   };
 
+  // справочник материалов и типовые наборы приходят вместе с кодом тарифов
+  const rebuildCatalog = () => {
+    const dl = $('matCatalog'); if (!dl) return;
+    dl.innerHTML = '';
+    ((rates && rates.catalog) || []).forEach(m => {
+      const o = document.createElement('option'); o.value = m[0]; o.label = (m[1] || '') + (m[2] != null ? ' · ' + m[2] + ' ₽' : ''); dl.appendChild(o);
+    });
+    const sel = $('matProfile'); if (!sel) return;
+    sel.innerHTML = '<option value="">типовой набор…</option>';
+    ((rates && rates.profiles) || []).forEach((pr, i) => {
+      const o = document.createElement('option'); o.value = String(i); o.textContent = pr[0]; sel.appendChild(o);
+    });
+    const has = !!((rates && rates.catalog && rates.catalog.length) || (rates && rates.profiles && rates.profiles.length));
+    $('matHelp').style.display = has ? '' : 'none';
+    sel.style.display = (rates && rates.profiles && rates.profiles.length) ? '' : 'none';
+    $('btnMatProfile').style.display = sel.style.display;
+  };
+  const catalogPrice = (name) => {
+    const m = ((rates && rates.catalog) || []).find(x => String(x[0]).trim().toLowerCase() === String(name).trim().toLowerCase());
+    return m ? +m[2] : null;
+  };
+
   const setRates = (r) => {
     rates = r;
+    rebuildCatalog();
     const chip = $('btnRates');
     if (!r) {
       chip.className = 'rates-chip bad no-print';
@@ -879,7 +919,7 @@ document.addEventListener('DOMContentLoaded', () => {
     div.innerHTML =
       '<div class="field-group span-all" style="margin:0">' +
         '<label>материал</label>' +
-        '<input type="text" class="input-text m-name txt" placeholder="название..." value="' + esc(d.name) + '">' +
+        '<input type="text" class="input-text m-name txt" list="matCatalog" placeholder="начните вводить название…" value="' + esc(d.name) + '">' +
       '</div>' +
       '<div class="field-group" style="margin:0">' +
         '<label>расход на 1 шт</label>' +
@@ -891,6 +931,11 @@ document.addEventListener('DOMContentLoaded', () => {
       '</div>' +
       '<button type="button" class="btn btn-danger row-del no-print" title="удалить">✕</button>';
     matList.appendChild(div);
+    const nameEl = div.querySelector('.m-name'), priceEl = div.querySelector('.m-price');
+    nameEl.addEventListener('change', () => {
+      const p = catalogPrice(nameEl.value);
+      if (p != null) { priceEl.value = p; calculate(); }
+    });
   };
 
   // ── расчёт ───────────────────────────────────────────────
@@ -1232,12 +1277,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('btnMaster').addEventListener('click', () => $('masterZone').classList.toggle('show'));
 
+  $('btnMatProfile').addEventListener('click', () => {
+    const i = $('matProfile').value; if (i === '') return;
+    const pr = rates.profiles[+i]; if (!pr) return;
+    const hasData = Array.from(matList.querySelectorAll('.m-name')).some(el => el.value.trim());
+    if (hasData && !confirm('Заменить текущие материалы набором «' + pr[0] + '»?')) return;
+    matList.innerHTML = '';
+    pr[1].forEach(m => addMatRow({ name: m[0], norm: m[1], price: catalogPrice(m[0]) || 0 }));
+    saveData(); calculate();
+  });
+
   const sha = async (s) => {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
+  const toNum = (s) => parseFloat(String(s).replace(/\s/g, '').replace(',', '.'));
+  const splitLine = (l) => l.split(/\t|;/).map(s => s.trim());
+  const parseCatalog = (txt) => {
+    const out = [];
+    String(txt || '').split(/\r?\n/).forEach(l => {
+      const f = splitLine(l); if (f.length < 2 || !f[0]) return;
+      const price = toNum(f[f.length - 1]); if (isNaN(price)) return;
+      out.push([f[0], f.length >= 3 ? f[1] : '', price]);
+    });
+    return out;
+  };
+  const parseProfiles = (txt) => {
+    const map = new Map();
+    String(txt || '').split(/\r?\n/).forEach(l => {
+      const f = splitLine(l); if (f.length < 3 || !f[0] || !f[1]) return;
+      const norm = toNum(f[2]); if (isNaN(norm)) return;
+      if (!map.has(f[0])) map.set(f[0], []);
+      map.get(f[0]).push([f[1], norm]);
+    });
+    return Array.from(map.entries());
+  };
+  const catalogToText = (c) => (c || []).map(m => m.join('\t')).join('\n');
+  const profilesToText = (p) => (p || []).map(pr => pr[1].map(m => pr[0] + '\t' + m[0] + '\t' + m[1]).join('\n')).join('\n');
+
   const fillEditor = (r) => {
+    $('pasteCatalog').value = catalogToText(r.catalog);
+    $('pasteProfiles').value = profilesToText(r.profiles);
     $('r_fotRab').value = r.fotRab; $('r_fotTeh').value = r.fotTeh;
     $('r_amort').value = r.amort;   $('r_other').value = r.other;
     $('r_opr').value = r.opr;       $('r_ohr').value = r.ohr;
@@ -1263,17 +1344,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // разбор диапазона B14:B20, скопированного из Excel
   $('btnPasteRates').addEventListener('click', () => {
     const msg = $('pasteMsg');
-    const nums = ($('pasteRates').value.match(/-?\d+(?:[.,]\d+)?(?:[eE][-+]?\d+)?/g) || [])
-      .map(s => parseFloat(s.replace(',', '.')))
-      .filter(n => !isNaN(n));
+    const NUM = /-?\d+(?:[.,]\d+)?(?:[eE][-+]?\d+)?/g;
+    const lines = $('pasteRates').value.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+    // строка = одна ставка: берём первое число в строке (текст пояснений с цифрами не мешает)
+    let nums = lines.map(l => {
+      const cells = l.split(/\t|;/); const src = cells.length > 1 ? cells[1] : cells[0];
+      const mm = (src.match(NUM) || l.match(NUM) || [])[0];
+      return mm == null ? NaN : parseFloat(mm.replace(',', '.'));
+    }).filter(v => !isNaN(v));
+    if (lines.length !== 7) nums = ($('pasteRates').value.match(NUM) || []).map(s => parseFloat(s.replace(',', '.')));
 
-    if (nums.length < 7) {
-      msg.textContent = 'Нашла только ' + nums.length + ' чисел. Нужно 7: скопируйте диапазон B14:B20 целиком.';
-      msg.className = 'muted text-danger';
-      return;
-    }
-    if (nums.length > 7) {
-      msg.textContent = 'Нашла ' + nums.length + ' чисел вместо 7. Скопируйте ровно диапазон B14:B20, без заголовков и пояснений.';
+    if (nums.length !== 7) {
+      msg.textContent = 'Нашла ' + nums.length + ' чисел вместо 7. Скопируйте ровно семь зелёных ячеек B5:B11 листа «Тарифы калькулятора» (или семь строк целиком).';
       msg.className = 'muted text-danger';
       return;
     }
@@ -1290,8 +1372,11 @@ document.addEventListener('DOMContentLoaded', () => {
       fotRab: getN('r_fotRab'), fotTeh: getN('r_fotTeh'), amort: getN('r_amort'),
       other: getN('r_other'), opr: getN('r_opr'), ohr: getN('r_ohr'),
       credit: getN('r_credit'), label: $('r_label').value.trim(),
-      date: $('r_date').value
+      date: $('r_date').value,
+      catalog: parseCatalog($('pasteCatalog').value), profiles: parseProfiles($('pasteProfiles').value)
     };
+    $('catalogMsg').textContent = r.catalog.length ? 'Материалов в коде: ' + r.catalog.length : 'Справочник материалов не задан';
+    $('profilesMsg').textContent = r.profiles.length ? 'Типовых наборов: ' + r.profiles.length : 'Типовые наборы не заданы';
     const key = packRates(r);
     const base = $('r_url').value.trim();
     $('keyOutput').value = key;
