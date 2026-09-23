@@ -385,8 +385,7 @@
             <label>ставка ндс</label>
             <select id="v_vat" class="input-text trig">
               <option value="22" selected>22%</option>
-              <option value="20">20%</option>
-              <option value="0">без ндс</option>
+                            <option value="0">без ндс</option>
             </select>
           </div>
           <div class="field-group" style="margin-bottom:0">
@@ -628,7 +627,7 @@
     <p class="muted">Код тарифов выдаёт финансовый отдел. Вставьте его один раз — он сохранится в этом браузере.</p>
     <div class="field-group" style="margin-top:16px">
       <label>код тарифов</label>
-      <textarea id="keyInput" class="key-box" placeholder="CTS1-..."></textarea>
+      <textarea id="keyInput" class="key-box" placeholder="TAR1-..."></textarea>
     </div>
     <div id="keyMsg" class="muted" style="margin-bottom:16px"></div>
     <div class="grid-2">
@@ -706,16 +705,15 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   // срок годности тарифов, дней
   const RATES_MAX_AGE = 183;
-  // sha-256 паролей служебного режима: основной латиницей (cts-kalk-2026),
-  // второй — прежний кириллический, чтобы старая записка не перестала работать
+  // sha-256 паролей служебного режима (сами пароли в коде не хранятся — см. инструкцию администратора)
   const MASTER_HASHES = [
-    '752e5aa916daf11aa5829fe48d721276c8f0b6383974a622840edbfbb512c9ac'  // пароль служебного режима: tarif
+    '3c46b3fe384049a163cebedbffe678f69d9dfafb2f26a4c18cda2713ceb623b2'
   ];
 
-  const STORE_DATA = 'calc_cts_data_v2';
-  const STORE_RATES = 'calc_cts_rates_v2';
+  const STORE_DATA = 'calc_data_v1';
+  const STORE_RATES = 'calc_rates_v1';
 
-  const STAGES = ['SMT', 'THT', 'FAS', 'монтаж', 'сборка', 'тестирование', 'упаковка', 'загрузка ПО'];
+  const STAGES = ['ЦПМ (поверхностный монтаж)', 'Сборка (выводной монтаж)', 'монтаж', 'сборка', 'тестирование', 'упаковка', 'загрузка ПО'];
   const TIME_UNITS = { 'сек': 1, 'мин': 60, 'ч': 3600 };
 
   let rates = null;
@@ -753,13 +751,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const arr = [r.fotRab, r.fotTeh, r.amort, r.other, r.opr, r.ohr, r.credit, r.label, r.date || '',
                  r.catalog || [], r.profiles || []];
     const body = btoa(unescape(encodeURIComponent(JSON.stringify(arr))));
-    return 'CTS1-' + body + '-' + crc(body);
+    return 'TAR1-' + body + '-' + crc(body);
   };
 
   const unpackRates = (key) => {
     const raw = String(key).trim();
-    const parts = raw.slice(raw.indexOf('CTS1-')).split('-');
-    if (parts.length !== 3 || parts[0] !== 'CTS1') throw new Error('неверный формат кода');
+    const parts = raw.slice(raw.indexOf('TAR1-')).split('-');
+    if (parts.length !== 3 || parts[0] !== 'TAR1') throw new Error('неверный формат кода');
     if (crc(parts[1]) !== parts[2].toUpperCase()) throw new Error('код повреждён при копировании');
     const a = JSON.parse(decodeURIComponent(escape(atob(parts[1]))));
     if (!Array.isArray(a) || a.length < 7) throw new Error('код неполный');
@@ -1150,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stageList.innerHTML = ''; matList.innerHTML = '';
     addPrepRow({ name: 'подготовка производства', who: 'teh', unit: 'ч' });
     addToolRow();
-    addStageRow({ name: 'SMT' });
+    addStageRow({ name: 'ЦПМ (поверхностный монтаж)' });
     addMatRow();
     setMfgMode('simple');
   };
@@ -1181,7 +1179,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!prepList.children.length) addPrepRow({ name: 'подготовка производства', who: 'teh', unit: 'ч' });
     if (!toolList.children.length) addToolRow();
-    if (!stageList.children.length) addStageRow({ name: 'SMT' });
+    if (!stageList.children.length) addStageRow({ name: 'ЦПМ (поверхностный монтаж)' });
     if (!matList.children.length) addMatRow();
 
     setMfgMode(data.mfgMode === 'stages' ? 'stages' : 'simple');
@@ -1341,7 +1339,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   $('masterPwd').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnPwdOk').click(); });
 
-  // разбор диапазона B14:B20, скопированного из Excel
+  // разбор диапазона B5:B11 листа «Тарифы калькулятора», скопированного из Excel
   $('btnPasteRates').addEventListener('click', () => {
     const msg = $('pasteMsg');
     const NUM = /-?\d+(?:[.,]\d+)?(?:[eE][-+]?\d+)?/g;
@@ -1399,7 +1397,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ключ из ссылки имеет приоритет над сохранённым
   const hashKey = decodeURIComponent(location.hash.replace(/^#/, '')).trim();
   let started = false;
-  if (hashKey.indexOf('CTS1-') === 0) {
+  if (hashKey.indexOf('TAR1-') === 0) {
     try {
       const r = unpackRates(hashKey);
       localStorage.setItem(STORE_RATES, hashKey);
