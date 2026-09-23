@@ -755,7 +755,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const unpackRates = (key) => {
-    const raw = String(key).trim();
+    // пробелы и переносы строк, которые добавляют почта и мессенджеры, убираются
+    const raw = String(key).replace(/\s+/g, '');
     const parts = raw.slice(raw.indexOf('TAR1-')).split('-');
     if (parts.length !== 3 || parts[0] !== 'TAR1') throw new Error('неверный формат кода');
     if (crc(parts[1]) !== parts[2].toUpperCase()) throw new Error('код повреждён при копировании');
