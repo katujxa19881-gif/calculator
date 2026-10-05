@@ -378,6 +378,7 @@
           <div class="field-group">
             <label>объём выпуска (шт)</label>
             <input type="number" id="v_qty" class="input-text trig" min="1" value="1000">
+            <div id="v_qty_err" style="color:#c0392b;font-size:12px;margin-top:4px"></div>
           </div>
         </div>
         <div class="grid-2">
@@ -948,7 +949,18 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const calculate = () => {
-    const qty = Math.max(1, getN('v_qty'));
+    // 05.10: объём 0 или меньше — не считаем «как 1 шт», а показываем ошибку (замечание аудита C26)
+    const qtyRaw = getN('v_qty');
+    const qtyErr = $('v_qty_err');
+    if (!(qtyRaw >= 1)) {
+      $('v_qty').style.borderColor = '#c0392b';
+      if (qtyErr) qtyErr.textContent = 'Объём выпуска — 1 шт или больше. Расчёт не выполнен.';
+      document.querySelectorAll('[id^="out_"]').forEach(el => { el.textContent = '—'; });
+      return;
+    }
+    $('v_qty').style.borderColor = '';
+    if (qtyErr) qtyErr.textContent = '';
+    const qty = qtyRaw;
     const vatRate = getN('v_vat') / 100;
 
     const r = rates || { fotRab: 0, fotTeh: 0, amort: 0, other: 0, opr: 0, ohr: 0, credit: 0 };
