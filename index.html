@@ -129,7 +129,7 @@
   .prep-row { grid-template-columns: 2fr 1.3fr 1fr 0.8fr 1.2fr auto; }
   .tool-row { grid-template-columns: 2fr 1.1fr 1.2fr 1.3fr auto; }
   .stage-row { grid-template-columns: 2.4fr 1.2fr auto; }
-  .mat-row  { grid-template-columns: 2fr 1fr 1fr auto; }
+  .mat-row  { grid-template-columns: 2fr 1fr 1fr 0.8fr auto; }
   @media (max-width: 760px) {
     .prep-row, .tool-row, .stage-row, .mat-row { grid-template-columns: 1fr 1fr; }
     .row-line .span-all { grid-column: span 2; }
@@ -394,6 +394,16 @@
             <input type="number" id="v_transportBatch" class="input-text trig" min="0" step="100" value="0">
           </div>
         </div>
+        <div class="grid-2" style="margin-top:16px">
+          <div class="field-group" style="margin-bottom:0">
+            <label>заказчик</label>
+            <input type="text" id="v_customer" class="input-text txt" placeholder="для файла Excel">
+          </div>
+          <div class="field-group" style="margin-bottom:0">
+            <label>№ расчёта</label>
+            <input type="text" id="v_calcNo" class="input-text txt" placeholder="подставится сам при сохранении">
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -453,8 +463,12 @@
       </div>
 
       <div class="card no-print">
+        <button type="button" id="btnXlsx" class="btn" style="width:100%; margin-bottom:10px">сохранить расчёт в excel</button>
+        <label style="display:flex; gap:8px; align-items:center; margin:0 0 14px; font-size:13px; cursor:pointer">
+          <input type="checkbox" id="v_prepCol" checked> подготовку производства — отдельной колонкой (иначе она разносится в цену изделия)
+        </label>
         <div class="grid-2">
-          <button type="button" id="btnPrint" class="btn">версия для печати / pdf</button>
+          <button type="button" id="btnPrint" class="btn btn-outline">версия для печати / pdf</button>
           <button type="button" id="btnReset" class="btn btn-outline" style="border-color:var(--c-border); color:var(--c-text-muted) !important;">очистить расчёт</button>
         </div>
       </div>
@@ -929,6 +943,13 @@ document.addEventListener('DOMContentLoaded', () => {
         '<label>цена за ед.</label>' +
         '<input type="number" class="input-text m-price trig" min="0" step="0.1" value="' + (d.price != null ? esc(d.price) : 0) + '">' +
       '</div>' +
+      '<div class="field-group" style="margin:0">' +
+        '<label>участок</label>' +
+        '<select class="input-text m-stage trig">' +
+          '<option value="smt"' + (d.stage === 'fas' ? '' : ' selected') + '>SMT</option>' +
+          '<option value="fas"' + (d.stage === 'fas' ? ' selected' : '') + '>FAS</option>' +
+        '</select>' +
+      '</div>' +
       '<button type="button" class="btn btn-danger row-del no-print" title="удалить">✕</button>';
     matList.appendChild(div);
     const nameEl = div.querySelector('.m-name'), priceEl = div.querySelector('.m-price');
@@ -1142,8 +1163,12 @@ document.addEventListener('DOMContentLoaded', () => {
     matList.querySelectorAll('.mat-row').forEach(row => data.materials.push({
       name: row.querySelector('.m-name').value,
       norm: row.querySelector('.m-norm').value,
-      price: row.querySelector('.m-price').value
+      price: row.querySelector('.m-price').value,
+      stage: row.querySelector('.m-stage').value
     }));
+    data.customer = $('v_customer').value;
+    data.calcNo = $('v_calcNo').value;
+    data.prepCol = $('v_prepCol').checked;
     try { localStorage.setItem(STORE_DATA, JSON.stringify(data)); } catch (e) {}
   };
 
@@ -1184,6 +1209,9 @@ document.addEventListener('DOMContentLoaded', () => {
     $('v_discPrep').value = data.discPrep || data.discount || '0';
     $('v_discSer').value = data.discSer || data.discount || '0';
     $('v_discSerSlider').value = $('v_discSer').value;
+    $('v_customer').value = data.customer || '';
+    $('v_calcNo').value = data.calcNo || '';
+    $('v_prepCol').checked = data.prepCol !== false;
 
     (data.prep || []).forEach(addPrepRow);
     (data.tools || []).forEach(addToolRow);
@@ -1250,9 +1278,284 @@ document.addEventListener('DOMContentLoaded', () => {
     $('v_discPrep').value = '0';
     $('v_discSer').value = '0';
     $('v_discSerSlider').value = '0';
+    $('v_customer').value = '';
+    $('v_calcNo').value = '';
+    $('v_prepCol').checked = true;
     blankForm();
     calculate();
   });
+
+  // ── выгрузка в Excel (11.10, по образцу «Калькуляция услуг сборки») ──
+  // колонки: подготовка производства (на партию, по выбору) · SMT · FAS (на 1 шт) · изделие (на 1 шт = SMT + FAS).
+  // этап «ЦПМ» → SMT, остальные этапы → FAS; режим «общая трудоёмкость» → одна колонка «выпуск».
+  // накладные (ОХР и КР, % по кредиту) — по тем же правилам, что в расчёте на экране: сумма колонок = итог калькулятора.
+  const breakdown = () => {
+    const qty = getN('v_qty');
+    const r = rates || { fotRab: 0, fotTeh: 0, amort: 0, other: 0, opr: 0, ohr: 0, credit: 0 };
+    const vatRate = getN('v_vat') / 100;
+    const blank = (name, unit) => ({ name: name, perUnit: unit, mat: 0, tool: 0, fot: 0, amort: 0, other: 0, opr: 0, log: 0, sec: 0 });
+    const prep = blank('подготовка производства', false);
+    const ser = mfgMode === 'stages' ? [blank('SMT', true), blank('FAS', true)] : [blank('выпуск', true)];
+    const serOf = (k) => ser.length === 1 ? ser[0] : (k === 'fas' ? ser[1] : ser[0]);
+    const addTime = (c, t, fotRate) => { c.fot += t * fotRate; c.amort += t * r.amort; c.other += t * r.other; c.opr += t * r.opr; c.sec += t; };
+    const prepRows = [];
+    prepList.querySelectorAll('.prep-row').forEach(row => {
+      const t = num(row.querySelector('.p-time')) * (TIME_UNITS[row.querySelector('.p-unit').value] || 1);
+      const who = row.querySelector('.p-who').value;
+      addTime(prep, t, who === 'teh' ? r.fotTeh : r.fotRab);
+      prep.mat += num(row.querySelector('.p-mat'));
+      prepRows.push({ name: row.querySelector('.p-name').value, who: who === 'teh' ? 'технолог' : 'рабочий / ЧПУ', h: t / 3600, mat: num(row.querySelector('.p-mat')) });
+    });
+    const toolRows = [];
+    toolList.querySelectorAll('.tool-row').forEach(row => {
+      const c = num(row.querySelector('.t-cost')); if (!c) return;
+      const unit = row.querySelector('.t-base').value === 'unit', part = row.querySelector('.t-part').value;
+      const sum = unit ? c * qty : c;
+      if (part === 'ser') ser[0].tool += sum; else prep.tool += sum;
+      toolRows.push({ name: row.querySelector('.t-name').value, cost: c, base: unit ? 'на 1 шт' : 'на заказ', part: part === 'ser' ? 'серия' : 'подготовка' });
+    });
+    const stageRows = [];
+    if (mfgMode === 'stages') {
+      stageList.querySelectorAll('.stage-row').forEach(row => {
+        const name = row.querySelector('.s-name').value, s = num(row.querySelector('.s-time'));
+        const k = name.indexOf('ЦПМ') === 0 ? 'smt' : 'fas';
+        addTime(serOf(k), s * qty, r.fotRab);
+        stageRows.push({ name: name, area: k === 'smt' ? 'SMT (ЦПМ)' : 'FAS (Сборка)', sec: s });
+      });
+    } else {
+      addTime(ser[0], getN('v_laborUnit') * qty, r.fotRab);
+      stageRows.push({ name: 'общая трудоёмкость', area: 'выпуск', sec: getN('v_laborUnit') });
+    }
+    const matRows = [];
+    matList.querySelectorAll('.mat-row').forEach(row => {
+      const n = num(row.querySelector('.m-norm')), p = num(row.querySelector('.m-price')), nm = row.querySelector('.m-name').value;
+      if (!nm.trim() && !(n * p)) return;
+      const k = row.querySelector('.m-stage').value;
+      serOf(k).mat += n * p * qty;
+      matRows.push({ name: nm, area: ser.length === 1 ? 'выпуск' : (k === 'fas' ? 'FAS' : 'SMT'), norm: n, price: p });
+    });
+    ser[ser.length - 1].log += getN('v_transportBatch');
+    // производственная себестоимость, ОХР и КР, % по кредиту — как в calculate()
+    const fin = (c) => {
+      c.prod = c.mat + c.tool + c.fot + c.amort + c.other + c.opr + c.log;
+      c.ohr = (c.prod - c.tool) * r.ohr; c.credit = c.prod * r.credit; c.full = c.prod + c.ohr + c.credit;
+    };
+    fin(prep); ser.forEach(fin);
+    // цена: подготовка — своя наценка / цель / скидка; серия — общая, цель на 1 шт делится между колонками по полной себестоимости
+    const pr = (cost, markupId, targetId, discId, mult) => {
+      const t = getN(targetId), d = getN(discId) / 100;
+      return (t > 0 ? t * mult : cost * (1 + getN(markupId) / 100)) * (1 - d);
+    };
+    prep.price = pr(prep.full, 'v_markupPrep', 'v_targetPrep', 'v_discPrep', 1);
+    const serFull = ser.reduce((a, c) => a + c.full, 0);
+    const serPrice = pr(serFull, 'v_markupSer', 'v_targetSer', 'v_discSer', qty);
+    ser.forEach(c => { c.price = serFull > 0 ? serPrice * c.full / serFull : serPrice / ser.length; });
+    const KEYS = ['mat', 'tool', 'fot', 'amort', 'other', 'opr', 'log', 'prod', 'ohr', 'credit', 'full', 'price'];
+    // маржинальность по переменным затратам — как на экране (материалы + оснастка + ФОТ + прочие ПР)
+    const variable = [prep].concat(ser).reduce((a, c) => a + c.mat + c.tool + c.fot + c.other, 0);
+    const showPrep = $('v_prepCol').checked;
+    if (!showPrep) {            // подготовка разносится в колонки серии пропорционально полной себестоимости
+      ser.forEach(c => {
+        const sh = serFull > 0 ? c.full / serFull : 1 / ser.length;
+        KEYS.forEach(k => { c[k] += prep[k] * sh; });
+      });
+    }
+    const cols = (showPrep ? [prep] : []).concat(ser);
+    cols.forEach(c => {
+      const div = c.perUnit ? qty : 1;
+      c.v = {}; KEYS.forEach(k => { c.v[k] = c[k] / div; });
+      c.v.priceVat = c.v.price * (1 + vatRate); c.v.profit = c.v.price - c.v.full; c.v.gross = c.v.price - c.v.prod;
+      c.v.markup = c.v.full > 0 ? c.v.profit / c.v.full : 0;
+    });
+    const total = { name: ($('v_product').value || 'изделие').trim(), perUnit: true, v: {} };
+    KEYS.concat(['priceVat', 'profit', 'gross']).forEach(k => { total.v[k] = ser.reduce((a, c) => a + c.v[k], 0); });
+    total.v.markup = total.v.full > 0 ? total.v.profit / total.v.full : 0;
+    const orderPrice = prep.price + serPrice, orderFull = prep.full + serFull;
+    return {
+      qty: qty, vatRate: vatRate, cols: cols, total: total, showPrep: showPrep, prepFull: prep.full, prepPrice: prep.price,
+      orderPrice: orderPrice, orderPriceVat: orderPrice * (1 + vatRate), orderProfit: orderPrice - orderFull,
+      margin: orderPrice > 0 ? (orderPrice - variable) / orderPrice : 0, roi: orderFull > 0 ? (orderPrice - orderFull) / orderFull : 0,
+      hSmt: ser.length > 1 ? ser[0].sec / qty / 3600 : null, hFas: ser.length > 1 ? ser[1].sec / qty / 3600 : null, hAll: ser.reduce((a, c) => a + c.sec, 0) / qty / 3600,
+      prepRows: prepRows, toolRows: toolRows, stageRows: stageRows, matRows: matRows
+    };
+  };
+
+  // минимальный .xlsx без внешних библиотек: zip без сжатия + SpreadsheetML
+  const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = (b) => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  const zipStore = (files) => {           // files: [[имя, строка]]
+    const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+    const u16 = (v) => [v & 255, (v >>> 8) & 255], u32 = (v) => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+    files.forEach(([name, text]) => {
+      const nb = enc.encode(name), data = enc.encode(text), crc = crc32(data);
+      const head = [].concat(u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(data.length), u32(data.length), u16(nb.length), u16(0));
+      parts.push(new Uint8Array(head), nb, data);
+      central.push([[].concat(u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(data.length), u32(data.length), u16(nb.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off)), nb]);
+      off += head.length + nb.length + data.length;
+    });
+    let cs = 0; central.forEach(([h, nb]) => { parts.push(new Uint8Array(h), nb); cs += h.length + nb.length; });
+    parts.push(new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(cs), u32(off), u16(0))));
+    return new Blob(parts, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  };
+  const xe = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const colL = (i) => { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+  // стили (индексы cellXfs): 0 обычный · 1 жирный · 2 шапка таблицы · 3 текст в рамке · 4 число в рамке · 5 жирный текст серый · 6 жирное число серое
+  // 7 жирный % серый · 8 заголовок · 9 поле ввода · 10 дата курсив · 11 % в рамке · 12 норма 0,000### в рамке · 13 текст по центру в рамке · 14 жирный по центру серый · 15 мелкий серый
+  const STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<numFmts count="3"><numFmt numFmtId="164" formatCode="#,##0.00"/><numFmt numFmtId="165" formatCode="0.0%"/><numFmt numFmtId="166" formatCode="#,##0.000###"/></numFmts>' +
+    '<fonts count="6"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font>' +
+    '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="16"/><color rgb="FF1F4E79"/><name val="Calibri"/></font>' +
+    '<font><i/><sz val="11"/><color rgb="FF595959"/><name val="Calibri"/></font><font><sz val="9"/><color rgb="FF7F7F7F"/><name val="Calibri"/></font></fonts>' +
+    '<fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FF333F50"/><bgColor indexed="64"/></patternFill></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFE7E9ED"/><bgColor indexed="64"/></patternFill></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFEEF1E3"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+    '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' +
+    '<border><left style="thin"><color rgb="FFD0D0D0"/></left><right style="thin"><color rgb="FFD0D0D0"/></right><top style="thin"><color rgb="FFD0D0D0"/></top><bottom style="thin"><color rgb="FFD0D0D0"/></bottom><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="16">' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+    '<xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="center"/></xf>' +
+    '<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>' +
+    '<xf numFmtId="164" fontId="1" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' +
+    '<xf numFmtId="165" fontId="1" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' +
+    '<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+    '<xf numFmtId="0" fontId="0" fillId="4" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="left"/></xf>' +
+    '<xf numFmtId="14" fontId="4" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyAlignment="1"><alignment horizontal="left"/></xf>' +
+    '<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>' +
+    '<xf numFmtId="166" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' +
+    '<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' +
+    '<xf numFmtId="0" fontId="5" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+    '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  // лист из массива строк: строка = [ячейка...], ячейка = null | {v, s} (v — число или текст)
+  const sheetXml = (rows, widths, merges) => {
+    let x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+            '<sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews><cols>' +
+            widths.map((w, i) => '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>').join('') + '</cols><sheetData>';
+    rows.forEach((row, ri) => {
+      if (!row) return;
+      const big = row.some(c => c && c.s === 2);
+      x += '<row r="' + (ri + 1) + '"' + (big ? ' ht="48" customHeight="1"' : '') + '>';
+      row.forEach((c, ci) => {
+        if (!c) return;
+        const ref = colL(ci) + (ri + 1), s = c.s ? ' s="' + c.s + '"' : '';
+        if (typeof c.v === 'number' && isFinite(c.v)) x += '<c r="' + ref + '"' + s + '><v>' + (Math.round(c.v * 1e6) / 1e6) + '</v></c>';
+        else if (c.v === '' || c.v == null) x += '<c r="' + ref + '"' + s + '/>';
+        else x += '<c r="' + ref + '"' + s + ' t="inlineStr"><is><t xml:space="preserve">' + xe(c.v) + '</t></is></c>';
+      });
+      x += '</row>';
+    });
+    x += '</sheetData>' + (merges && merges.length ? '<mergeCells count="' + merges.length + '">' + merges.map(m => '<mergeCell ref="' + m + '"/>').join('') + '</mergeCells>' : '') +
+         '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="landscape" fitToHeight="0"/></worksheet>';
+    return x;
+  };
+  const xlsxBlob = (sheets) => {          // sheets: [[имя, xml]]
+    const ct = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+      sheets.map((s, i) => '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('') + '</Types>';
+    const rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+    const wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
+      sheets.map((s, i) => '<sheet name="' + xe(s[0]) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>').join('') + '</sheets></workbook>';
+    const wbr = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      sheets.map((s, i) => '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>').join('') +
+      '<Relationship Id="rId' + (sheets.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
+    return zipStore([['[Content_Types].xml', ct], ['_rels/.rels', rels], ['xl/workbook.xml', wb], ['xl/_rels/workbook.xml.rels', wbr], ['xl/styles.xml', STYLES]]
+      .concat(sheets.map((s, i) => ['xl/worksheets/sheet' + (i + 1) + '.xml', s[1]])));
+  };
+
+  const buildXlsx = () => {
+    const b = breakdown();
+    const today = new Date(), dd = (n) => String(n).padStart(2, '0');
+    let no = $('v_calcNo').value.trim();
+    if (!no) { no = 'Р-' + today.getFullYear() + dd(today.getMonth() + 1) + dd(today.getDate()) + '-' + dd(today.getHours()) + dd(today.getMinutes()); $('v_calcNo').value = no; saveData(); }
+    const product = ($('v_product').value || 'изделие').trim(), customer = $('v_customer').value.trim();
+    const excelDate = Math.floor((Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) - Date.UTC(1899, 11, 30)) / 86400000);
+    const T = (v, s) => ({ v: v, s: s || 0 }), N = (v, s) => ({ v: +v || 0, s: s });
+    const cols = b.cols.concat([b.total]);
+    const rows = [];
+    rows[0] = [T('Утверждаю', 1)];
+    rows[1] = [T('Генеральный директор')];
+    rows[2] = [T('____________________')];
+    rows[3] = [{ v: excelDate, s: 10 }];
+    rows[5] = [T('Наценка на сс:', 1), N(getN('v_markupSer') / 100, 11), T('КАЛЬКУЛЯЦИЯ УСЛУГ СБОРКИ', 8)];
+    rows[6] = [T('№ расчёта:', 1), T(no, 9)];
+    rows[7] = [T('Заказчик:', 1), T(customer, 9)];
+    rows[8] = [T('Модель:', 1), T(product, 9)];
+    rows[9] = [T('Партия:', 1), { v: b.qty, s: 9 }];
+    const H = 11;
+    rows[H] = [T('Наименование статей', 2), T('Ед. изм.', 2)].concat(cols.map(c => T(
+      c === b.total ? product + ' (на 1 шт)' : c.perUnit ? c.name + ' (на 1 шт)' : c.name + ' (на партию)', 2)));
+    const LINES = [
+      ['Цена продажи с НДС', 'priceVat', 'b'], ['Цена продажи без НДС', 'price', 'b'], ['Прибыль', 'profit'], ['Валовый доход (валовая маржа)', 'gross'],
+      ['Полная себестоимость, в т.ч.:', 'full', 'b'], ['Производственная себестоимость, в т.ч.:', 'prod', 'b'],
+      ['Прямые материалы', 'mat'], ['Оснастка', 'tool'], ['ФОТ ПР', 'fot'], ['Амортизация ОС ПР', 'amort'], ['Прочие ПР', 'other'],
+      ['Общепроизводственные расходы', 'opr'], ['Логистика', 'log', 'opt'],
+      ['Общехозяйственные и коммерческие расходы', 'ohr'], ['Проценты по кредитам', 'credit']
+    ];
+    let ri = H + 1;
+    LINES.forEach(([label, k, kind]) => {
+      if (kind === 'opt' && !cols.some(c => c.v[k] > 0.004)) return;
+      const bold = kind === 'b';
+      rows[ri++] = [T(label, bold ? 5 : 3), T('руб.', bold ? 14 : 13)].concat(cols.map(c => N(c.v[k], bold ? 6 : 4)));
+    });
+    rows[ri++] = [T('Целевая наценка на себестоимость', 5), T('%', 14)].concat(cols.map(c => N(c.v.markup, 7)));
+    const last = ri - 1;
+    // справа — итоги заказа
+    const R0 = H, RC = 2 + cols.length + 1;
+    const side = [['Маржинальность', b.margin, 11], ['Наценка на рентабельность', b.roi, 11], ['НДС', b.vatRate, 11], ['Количество выпуска', b.qty, 4],
+                  ['Заказ целиком: цена с НДС', b.orderPriceVat, 4], ['Заказ целиком: цена без НДС', b.orderPrice, 4], ['Заказ целиком: прибыль', b.orderProfit, 4]];
+    side.forEach(([l, v, s], i) => { const row = rows[R0 + 1 + i] || (rows[R0 + 1 + i] = []); row[RC] = T(l, 3); row[RC + 1] = N(v, s); });
+    ri = Math.max(ri, R0 + 1 + side.length) + 1;
+    rows[ri++] = [T((b.showPrep ? 'Подготовка производства — на всю партию; ' : 'Подготовка производства разнесена в цену изделия; ') +
+      'колонки участков и изделия — на 1 шт. Изделие = ' + b.cols.filter(c => c.perUnit).map(c => c.name).join(' + ') + '.', 15)];
+    rows[ri++] = [T('Тарифы калькулятора: ' + (rates ? (rates.label || '') + (rates.date ? ' от ' + ruDate(rates.date) : '') : 'не заданы') +
+      '. Расчёт ' + no + ' от ' + today.toLocaleDateString('ru-RU') + '.', 15)];
+    const widths = [44, 9].concat(cols.map(() => 16)).concat([3, 30, 16]);
+
+    // лист 2 — нормы (для файла технологов и калькуляции бюджета)
+    const n = [];
+    n[0] = [T('НОРМЫ ПО РАСЧЁТУ ' + no, 8)];
+    n[1] = [T('Изделие:', 1), T(product)]; n[2] = [T('Заказчик:', 1), T(customer)]; n[3] = [T('Партия, шт:', 1), N(b.qty, 0)];
+    n[5] = [T('Трудоёмкость на 1 шт', 1)];
+    n[6] = [T('Участок', 2), T('Этап', 2), T('сек на 1 шт', 2), T('н-ч на 1 шт', 2)];
+    let k = 7;
+    b.stageRows.forEach(s => { n[k++] = [T(s.area, 3), T(s.name, 3), N(s.sec, 12), N(s.sec / 3600, 12)]; });
+    if (b.hSmt != null) { n[k++] = [T('Итого Н-ч ЦПМ (SMT) на шт', 5), T('', 5), T('', 5), N(b.hSmt, 12)]; n[k++] = [T('Итого Н-ч Сборка (FAS) на шт', 5), T('', 5), T('', 5), N(b.hFas, 12)]; }
+    else n[k++] = [T('Итого н-ч на шт', 5), T('', 5), T('', 5), N(b.hAll, 12)];
+    k++;
+    n[k++] = [T('Материалы на 1 шт', 1)];
+    n[k++] = [T('Материал', 2), T('Участок', 2), T('Расход на 1 шт', 2), T('Цена за ед., руб.', 2), T('Сумма на 1 шт, руб.', 2)];
+    b.matRows.forEach(m => { n[k++] = [T(m.name, 3), T(m.area, 13), N(m.norm, 12), N(m.price, 4), N(m.norm * m.price, 4)]; });
+    k++;
+    n[k++] = [T('Подготовка производства (на весь заказ)', 1)];
+    n[k++] = [T('Что делаем', 2), T('Исполнитель', 2), T('Время на заказ, ч', 2), T('Материалы, руб.', 2), T('Время на 1 шт, ч (справочно)', 2)];
+    b.prepRows.forEach(p => { n[k++] = [T(p.name, 3), T(p.who, 13), N(p.h, 12), N(p.mat, 4), N(b.qty ? p.h / b.qty : 0, 12)]; });
+    if (b.toolRows.length) {
+      k++; n[k++] = [T('Оснастка', 1)];
+      n[k++] = [T('Оснастка', 2), T('База', 2), T('Стоимость, руб.', 2), T('Относится к', 2)];
+      b.toolRows.forEach(t => { n[k++] = [T(t.name, 3), T(t.base, 13), N(t.cost, 4), T(t.part, 13)]; });
+    }
+    const blob = xlsxBlob([['Калькуляция', sheetXml(rows, widths, [])], ['Нормы', sheetXml(n, [44, 30, 16, 16, 18], [])]]);
+    const safe = (s) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+    const fname = 'Расчёт ' + safe(no) + ' (' + safe(product) + (customer ? ', ' + safe(customer) : '') + ', ' + b.qty + ' шт).xlsx';
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fname;
+    if (!window.__noDownload) { document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+    return { b: b, fname: fname, blob: blob };
+  };
+  window.__calcExport = { breakdown: breakdown, buildXlsx: buildXlsx };   // для проверки
+  $('btnXlsx').addEventListener('click', () => {
+    if (!rates) { alert('Сначала введите код тарифов (кнопка «тарифы»): без них расчёт пустой.'); return; }
+    if (!(getN('v_qty') >= 1)) { alert('Объём выпуска — 1 шт или больше.'); return; }
+    buildXlsx();
+  });
+  $('v_prepCol').addEventListener('change', saveData);
 
   // ── окно тарифов ─────────────────────────────────────────
   const modal = $('ratesModal');
