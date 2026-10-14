@@ -671,6 +671,11 @@
           <div id="pasteMsg" class="muted" style="margin-top:8px"></div>
           <button type="button" id="btnPasteRates" class="btn-quiet" style="margin-top:8px">заполнить поля</button>
         </div>
+        <div class="field-group" style="margin-top:16px">
+          <label>ставки по участкам — скопируйте зелёные ячейки b47:b54 листа «тарифы калькулятора» (восемь строк: цпм — фот, амортизация, прочие пр, опр; сборка — то же)</label>
+          <textarea id="pasteAreas" class="key-box" style="min-height:64px" placeholder="0,310800&#10;0,930700&#10;..."></textarea>
+          <div id="areasMsg" class="muted" style="margin-top:8px"></div>
+        </div>
         <div class="grid-2" style="margin-top:16px">
           <div class="field-group"><label>ставка фот рабочих (₽/сек)</label><input type="number" id="r_fotRab" class="input-text" step="0.000001"></div>
           <div class="field-group"><label>ставка фот технологов (₽/сек)</label><input type="number" id="r_fotTeh" class="input-text" step="0.000001"></div>
@@ -764,7 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const packRates = (r) => {
     const arr = [r.fotRab, r.fotTeh, r.amort, r.other, r.opr, r.ohr, r.credit, r.label, r.date || '',
-                 r.catalog || [], r.profiles || []];
+                 r.catalog || [], r.profiles || [], r.areas || null];
     const body = btoa(unescape(encodeURIComponent(JSON.stringify(arr))));
     return 'TAR1-' + body + '-' + crc(body);
   };
@@ -780,9 +785,25 @@ document.addEventListener('DOMContentLoaded', () => {
     return {
       fotRab: +a[0], fotTeh: +a[1], amort: +a[2], other: +a[3],
       opr: +a[4], ohr: +a[5], credit: +a[6], label: a[7] || '', date: a[8] || '',
-      catalog: Array.isArray(a[9]) ? a[9] : [], profiles: Array.isArray(a[10]) ? a[10] : []
+      catalog: Array.isArray(a[9]) ? a[9] : [], profiles: Array.isArray(a[10]) ? a[10] : [],
+      areas: normAreas(a[11])
     };
   };
+
+  // 14.10: ставки по участкам — [ЦПМ: фот, амортизация, прочие пр, опр, Сборка: фот, амортизация, прочие пр, опр], ₽/сек.
+  // этап «ЦПМ…» считается по ставкам ЦПМ, остальные этапы — по ставкам Сборки; подготовка и «общая трудоёмкость» — по общим ставкам.
+  // нет ставок по участкам (старый код) — всё по общим ставкам, как раньше.
+  function normAreas(a) {
+    if (!Array.isArray(a) || a.length < 8) return null;
+    const v = a.slice(0, 8).map(x => +x);
+    return v.some(x => isNaN(x)) ? null : v;
+  }
+  const areaRates = (r, k) => {
+    if (!r || !Array.isArray(r.areas)) return { fotRab: r.fotRab, amort: r.amort, other: r.other, opr: r.opr };
+    const o = k === 'smt' ? 0 : 4, a = r.areas;
+    return { fotRab: a[o], amort: a[o + 1], other: a[o + 2], opr: a[o + 3] };
+  };
+  const stageArea = (name) => String(name || '').indexOf('ЦПМ') === 0 ? 'smt' : 'fas';
 
   const ruDate = (iso) => {
     if (!iso) return '';
@@ -832,7 +853,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const age = ageDays(r.date);
     const stale = age !== null && age > RATES_MAX_AGE;
     chip.className = 'rates-chip ' + (stale ? 'bad' : 'ok') + ' no-print';
-    chip.textContent = 'тарифы ' + (r.label || 'загружены') + (r.date ? ' · от ' + ruDate(r.date) : '');
+    chip.textContent = 'тарифы ' + (r.label || 'загружены') + (r.date ? ' · от ' + ruDate(r.date) : '') + (Array.isArray(r.areas) ? ' · по участкам' : '');
     $('alertRates').classList.remove('show');
     $('staleDate').textContent = ruDate(r.date);
     $('alertStale').classList.toggle('show', stale);
@@ -1010,20 +1031,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     const toolProd = toolPrepProd + toolSerProd;
 
-    // выпуск изделий — ввод в секундах на 1 шт
-    let mfgSecUnit = 0;
+    // выпуск изделий — ввод в секундах на 1 шт; по этапам — ставки своего участка (ЦПМ / Сборка)
+    let mfgSecUnit = 0, mfgFot = 0, mfgProd = 0;
     if (mfgMode === 'simple') {
       mfgSecUnit = getN('v_laborUnit');
+      const t = mfgSecUnit * qty;
+      mfgFot = t * r.fotRab; otherSum += t * r.other; mfgProd = mfgFot + t * perSecCommon;
     } else {
       stageList.querySelectorAll('.stage-row').forEach(row => {
-        mfgSecUnit += num(row.querySelector('.s-time'));
+        const s = num(row.querySelector('.s-time')), t = s * qty;
+        const ar = areaRates(r, stageArea(row.querySelector('.s-name').value));
+        mfgSecUnit += s;
+        mfgFot += t * ar.fotRab; otherSum += t * ar.other; mfgProd += t * (ar.fotRab + ar.amort + ar.other + ar.opr);
       });
     }
-    const mfgSecBatch = mfgSecUnit * qty;
-    const mfgFot = mfgSecBatch * r.fotRab;
     fotSum += mfgFot;
-    otherSum += mfgSecBatch * r.other;
-    const mfgProd = mfgFot + mfgSecBatch * perSecCommon;
 
     // материалы и логистика
     let matUnit = 0;
@@ -1297,7 +1319,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const prep = blank('подготовка производства', false);
     const ser = mfgMode === 'stages' ? [blank('SMT', true), blank('FAS', true)] : [blank('выпуск', true)];
     const serOf = (k) => ser.length === 1 ? ser[0] : (k === 'fas' ? ser[1] : ser[0]);
-    const addTime = (c, t, fotRate) => { c.fot += t * fotRate; c.amort += t * r.amort; c.other += t * r.other; c.opr += t * r.opr; c.sec += t; };
+    const addTime = (c, t, fotRate, ar) => { ar = ar || r; c.fot += t * fotRate; c.amort += t * ar.amort; c.other += t * ar.other; c.opr += t * ar.opr; c.sec += t; };
     const prepRows = [];
     prepList.querySelectorAll('.prep-row').forEach(row => {
       const t = num(row.querySelector('.p-time')) * (TIME_UNITS[row.querySelector('.p-unit').value] || 1);
@@ -1318,8 +1340,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mfgMode === 'stages') {
       stageList.querySelectorAll('.stage-row').forEach(row => {
         const name = row.querySelector('.s-name').value, s = num(row.querySelector('.s-time'));
-        const k = name.indexOf('ЦПМ') === 0 ? 'smt' : 'fas';
-        addTime(serOf(k), s * qty, r.fotRab);
+        const k = stageArea(name), ar = areaRates(r, k);
+        addTime(serOf(k), s * qty, ar.fotRab, ar);
         stageRows.push({ name: name, area: k === 'smt' ? 'SMT (ЦПМ)' : 'FAS (Сборка)', sec: s });
       });
     } else {
@@ -1630,7 +1652,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const catalogToText = (c) => (c || []).map(m => m.join('\t')).join('\n');
   const profilesToText = (p) => (p || []).map(pr => pr[1].map(m => pr[0] + '\t' + m[0] + '\t' + m[1]).join('\n')).join('\n');
 
+  const parseAreas = (txt) => {
+    const NUM = /-?\d+(?:[.,]\d+)?(?:[eE][-+]?\d+)?/g;
+    const lines = String(txt || '').split(/\r?\n/).map(l => l.trim()).filter(l => l);
+    if (!lines.length) return null;
+    let nums = lines.map(l => {
+      const cells = l.split(/\t|;/); const src = cells.length > 1 ? cells[1] : cells[0];
+      const mm = (src.match(NUM) || l.match(NUM) || [])[0];
+      return mm == null ? NaN : parseFloat(mm.replace(',', '.'));
+    }).filter(v => !isNaN(v));
+    if (lines.length !== 8) nums = (String(txt).match(NUM) || []).map(x => parseFloat(x.replace(',', '.')));
+    return nums.length === 8 ? nums : undefined;
+  };
   const fillEditor = (r) => {
+    $('pasteAreas').value = Array.isArray(r.areas) ? r.areas.join('\n') : '';
     $('pasteCatalog').value = catalogToText(r.catalog);
     $('pasteProfiles').value = profilesToText(r.profiles);
     $('r_fotRab').value = r.fotRab; $('r_fotTeh').value = r.fotTeh;
@@ -1687,8 +1722,16 @@ document.addEventListener('DOMContentLoaded', () => {
       other: getN('r_other'), opr: getN('r_opr'), ohr: getN('r_ohr'),
       credit: getN('r_credit'), label: $('r_label').value.trim(),
       date: $('r_date').value,
-      catalog: parseCatalog($('pasteCatalog').value), profiles: parseProfiles($('pasteProfiles').value)
+      catalog: parseCatalog($('pasteCatalog').value), profiles: parseProfiles($('pasteProfiles').value),
+      areas: parseAreas($('pasteAreas').value)
     };
+    if (r.areas === undefined) {
+      $('areasMsg').textContent = 'В поле «ставки по участкам» нужно ровно 8 чисел (B47:B54). Код не создан.';
+      $('areasMsg').className = 'muted text-danger';
+      return;
+    }
+    $('areasMsg').textContent = r.areas ? 'Ставки по участкам: ЦПМ и Сборка — в коде.' : 'Ставки по участкам не заданы — всё считается по общим ставкам.';
+    $('areasMsg').className = 'muted';
     $('catalogMsg').textContent = r.catalog.length ? 'Материалов в коде: ' + r.catalog.length : 'Справочник материалов не задан';
     $('profilesMsg').textContent = r.profiles.length ? 'Типовых наборов: ' + r.profiles.length : 'Типовые наборы не заданы';
     const key = packRates(r);
